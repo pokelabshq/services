@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Link Preview API — Extract title, description, image from any URL."""
-import http.server, json, re, ssl, urllib.request, urllib.error
+import http.server
+import os, json, re, ssl, urllib.request, urllib.error
 from html.parser import HTMLParser
 
 PORT = 8765
+PUBLIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
 
 class MetaParser(HTMLParser):
     def __init__(self):
@@ -95,7 +97,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if url:
             self.send_json(extract(url))
             return
-        self.send_html(LANDING)
+        # Serve static files from public/
+        path = u.path.split("?")[0]
+        if path == "/": path = "/index.html"
+        filepath = os.path.join(PUBLIC_DIR, path.lstrip("/"))
+        if os.path.isfile(filepath):
+            ct = "text/html"
+            if filepath.endswith(".css"): ct = "text/css"
+            elif filepath.endswith(".js"): ct = "application/javascript"
+            elif filepath.endswith(".png"): ct = "image/png"
+            with open(filepath, "rb") as fh:
+                data = fh.read()
+            self.send_response(200)
+            self.send_header("Content-Type", ct)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def do_POST(self):
         if self.path == "/api/preview":
@@ -127,34 +147,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, *a): pass
 
-LANDING = """<!DOCTYPE html>
-<html><head><title>Link Preview API</title>
-<style>
-body{font-family:system-ui;background:#0a0a1a;color:#e0e0e0;max-width:700px;margin:4rem auto;padding:0 2rem}
-h1{color:#6c63ff}code{background:#1a1a3e;padding:.2rem .5rem;border-radius:4px;font-size:.9rem}
-pre{background:#12122a;padding:1.5rem;border-radius:8px;overflow-x:auto}
-input{padding:.75rem;width:100%;background:#1a1a3e;color:#e0e0e0;border:1px solid #6c63ff;border-radius:8px;font-size:1rem;box-sizing:border-box}
-button{background:#6c63ff;color:#fff;border:none;padding:.75rem 2rem;border-radius:8px;cursor:pointer;margin-top:.75rem;font-size:1rem}
-button:hover{transform:scale(1.02)}
-</style></head>
-<body>
-<h1>🔗 Link Preview API</h1>
-<p>Extract title, description, and image from any URL.</p>
-<pre>POST /api/preview
-Content-Type: application/json
-
-{"url": "https://github.com"}</pre>
-<input id="url" placeholder="https://github.com" value="https://github.com">
-<button onclick="go()">Preview</button>
-<pre id="out">{}</pre>
-<script>
-async function go(){
-  const url=document.getElementById('url').value;
-  const r=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
-  document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);
-}
-</script>
-</body></html>"""
 
 if __name__ == "__main__":
     server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
