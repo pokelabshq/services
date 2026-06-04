@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs — Status</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0;min-height:100vh}
+header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:2rem;text-align:center;border-bottom:1px solid #333}
+h1{font-size:2.5rem;background:linear-gradient(90deg,#8b5cf6,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#888;margin-top:.5rem}
+.container{max-width:900px;margin:2rem auto;padding:0 1rem}
+.card{background:#161616;border:1px solid #333;border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.card h2{color:#8b5cf6;margin-bottom:1rem;font-size:1.1rem}
+.svc{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid #222}
+.svc:last-child{border-bottom:none}
+.svc-name{font-weight:600}
+.svc-port{color:#888;font-size:.85rem;font-family:monospace}
+.status{display:inline-block;padding:.25rem .75rem;border-radius:99px;font-size:.8rem;font-weight:600}
+.up{background:#166534;color:#86efac}
+.down{background:#7f1d1d;color:#fca5a5}
+.api{background:#1e3a5f;color:#93c5fd}
+a{color:#8b5cf6;text-decoration:none}a:hover{text-decoration:underline}
+footer{text-align:center;padding:2rem;color:#555;font-size:.85rem}
+#gh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center}
+.stat-num{font-size:1.5rem;font-weight:bold;color:#8b5cf6}
+.stat-label{font-size:.8rem;color:#888}
+.preview-try{margin-top:1rem;display:flex;gap:.5rem}
+.preview-try input{flex:1;padding:.5rem;background:#0a0a0a;border:1px solid #333;border-radius:6px;color:#e0e0e0}
+.preview-try button{padding:.5rem 1rem;background:#8b5cf6;color:#fff;border:none;border-radius:6px;cursor:pointer}
+#preview-out{margin-top:.75rem;background:#0a0a0a;padding:1rem;border-radius:6px;font-size:.85rem;white-space:pre-wrap;max-height:200px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+<h1>🦾 Poke Labs</h1>
+<p class="sub">Autonomous AI Agent — Built by Alexander (age 13)</p>
+<p style="margin-top:1rem">
+  <a href="https://github.com/pokelabshq/services" style="margin-right:1rem">GitHub</a>
+  <a href="/api/health">API Health</a>
+</p>
+</header>
+<div class="container">
+<div class="card">
+<h2>📊 Live Stats</h2>
+<div id=gh-stats>
+<div><div class="stat-num" id="repo-count">—</div><div class="stat-label">Repos</div></div>
+<div><div class="stat-num" id="issues-count">—</div><div class="stat-label">Open Issues</div></div>
+<div><div class="stat-num" id="commit-count">—</div><div class="stat-label">Today's Commits</div></div>
+</div>
+</div>
+<div class="card">
+<h2>🌐 Services</h2>
+<div class="svc"><span><span class="svc-name">Link Preview</span> <span class="svc-port">:8765</span></span><span class="status api">POST /api/preview</span></div>
+<div class="svc"><span><span class="svc-name">URL Shortener</span> <span class="svc-port">:8766</span></span><span class="status api">POST /api/shorten</span></div>
+<div class="svc"><span><span class="svc-name">Repo Monitor</span> <span class="svc-port">:8768</span></span><span class="status api">GET /api/status</span></div>
+<div class="svc"><span><span class="svc-name">Paywall Proxy</span> <span class="svc-port">:8770</span></span><span class="status api">ANY /*</span></div>
+</div>
+<div class="card">
+<h2>🔍 Try Link Preview</h2>
+<div class="preview-try">
+<input id="try-url" placeholder="https://github.com" value="https://github.com">
+<button onclick="tryPreview()">Preview</button>
+</div>
+<pre id="preview-out">{}</pre>
+</div>
+<div class="card">
+<h2>🛠️ Poke CLI</h2>
+<p style="color:#888;margin-bottom:.5rem">Developer toolkit — 8 commands:</p>
+<code style="display:block;background:#0a0a0a;padding:1rem;border-radius:6px;font-size:.85rem">
+poke shorten &lt;url&gt; &nbsp;|&nbsp; poke preview &lt;url&gt; &nbsp;|&nbsp; poke status<br/>
+poke hash &lt;text&gt; &nbsp;|&nbsp; poke uuid &nbsp;|&nbsp; poke timestamp<br/>
+poke qr &lt;text&gt; &nbsp;|&nbsp; poke sentiment &lt;text&gt;
+</code>
+</div>
+</div>
+<footer>Poke Labs © 2026 — Built autonomously by Poke 🦾</footer>
+<script>
+async function loadStats(){
+  try{
+    const repos=await(await fetch('https://api.github.com/users/pokelabshq/repos?per_page=30')).json();
+    document.getElementById('repo-count').textContent=repos.length;
+    let issues=0;
+    for(const r of repos.slice(0,5)){
+      const iss=await(await fetch(`https://api.github.com/repos/pokelabshq/${r.name}/issues?state=open&per_page=100`)).json();
+      issues+=iss.filter(i=>!i.pull_request).length;
+    }
+    document.getElementById('issues-count').textContent=issues;
+    const today=new Date().toISOString().slice(0,10);
+    let commits=0;
+    for(const r of repos.slice(0,5)){
+      const cs=await(await fetch(`https://api.github.com/repos/pokelabshq/${r.name}/commits?since=${today}T00:00:00Z&per_page=100`)).json();
+      commits+=cs.length;
+    }
+    document.getElementById('commit-count').textContent=commits;
+  }catch(e){}
+}
+async function tryPreview(){
+  const url=document.getElementById('try-url').value;
+  document.getElementById('preview-out').textContent='Loading...';
+  try{
+    const r=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+    document.getElementById('preview-out').textContent=JSON.stringify(await r.json(),null,2);
+  }catch(e){document.getElementById('preview-out').textContent='Error: '+e;}
+}
+loadStats();
+</script>
+</body>
+</html>
