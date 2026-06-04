@@ -9,7 +9,7 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 def check(url, timeout=10):
     try:
         r = urllib.request.urlopen(urllib.request.Request(url, method="GET"), timeout=timeout)
-        return "🟢 UP", r.status
+        return "🟢 UP", str(r.status)
     except Exception as e:
         return "🔴 DOWN", str(e)[:50]
 
@@ -22,24 +22,35 @@ def gh(path):
 
 def generate():
     now = datetime.now(timezone.utc)
-    services = [check(u) for u in ["https://pokelabs.org","https://council.pokelabs.org"]]
+    
+    # Service checks
+    service_lines = []
+    for name, url in [("Poke Labs", "https://pokelabs.org"), ("Council", "https://council.pokelabs.org")]:
+        status, detail = check(url)
+        service_lines.append(f"  {status} {name} ({detail})")
+    
+    # GitHub
     repos = gh("users/pokelabshq/repos?sort=updated&per_page=5")
     issues = sum(len(gh(f"repos/pokelabshq/{r}/issues?state=open&per_page=100")) for r in ["council","poke","services"])
+    
+    repo_lines = []
+    for r in repos[:5]:
+        repo_lines.append(f"  📦 {r['name']} — ⭐{r['stargazers_count']} · {r.get('language','?')} · {r['updated_at'][:10]}")
+    
     commits = []
     for r in ["council","services"]:
         for c in gh(f"repos/pokelabshq/{r}/commits?per_page=3"):
             commits.append(f"  🔨 {r}: {c['commit']['message'].split(chr(10))[0][:60]} ({c['commit']['author']['date'][:10]})")
-    sl = "".join(f"  {s} {u} ({d})" for s,(d,u) in zip([check(u) for u in ["https://pokelabs.org","https://council.pokelabs.org"]], services))
-    rl = "".join(f"  📦 {r['name']} — ⭐{r['stargazers_count']} · {r.get('language','?')} · {r['updated_at'][:10]}" for r in repos[:5])
+    
     return f"""☀️ *Poke Labs — Daily Briefing*
 📅 {now.strftime('%A, %B %d, %Y')}
 
 *🌐 Services*
-{sl}
+{chr(10).join(service_lines)}
 
 *📊 GitHub*
   🔓 {issues} open issues
-{rl}
+{chr(10).join(repo_lines)}
 
 *🔨 Recent Commits*
 {chr(10).join(commits[:6])}
