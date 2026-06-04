@@ -172,13 +172,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_PUT(self):
         self.do_POST()
     
-    def do_DELETE(self):
-        self.do_POST()
+    do_DELETE = do_POST
     
     def forward_request(self, method):
         """Forward request to upstream API."""
         if not UPSTREAM:
-            body = json.dumps({"error": "No upstream configured. Set UPSTREAM env var."}).encode()
+            body = json.dumps({"error": "No upstream configured"}).encode()
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -186,15 +185,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         
         target_url = UPSTREAM.rstrip("/") + self.path
-        
-        # Read body for POST/PUT
         content_length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_length) if content_length > 0 else None
+        req_body = self.rfile.read(content_length) if content_length > 0 else None
         
-        # Build request
-        req = urllib.request.Request(target_url, data=body, method=method)
-        
-        # Forward relevant headers
+        req = urllib.request.Request(target_url, data=req_body, method=method)
         for header in ["Content-Type", "Accept", "Authorization", "User-Agent"]:
             val = self.headers.get(header)
             if val:
@@ -204,18 +198,16 @@ class Handler(BaseHTTPRequestHandler):
             resp = urllib.request.urlopen(req, timeout=30)
             resp_body = resp.read()
             self.send_response(resp.status)
-            # Forward response headers
             for key, val in resp.getheaders():
                 if key.lower() not in ("transfer-encoding", "connection"):
                     self.send_header(key, val)
             self.end_headers()
             self.wfile.write(resp_body)
         except urllib.error.HTTPError as e:
-            resp_body = e.read()
             self.send_response(e.code)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(resp_body)
+            self.wfile.write(e.read())
         except Exception as e:
             body = json.dumps({"error": f"Upstream error: {str(e)}"}).encode()
             self.send_response(502)
@@ -279,7 +271,6 @@ code {{ background: #0a0a0a; padding: 0.75rem; border-radius: 6px; display: bloc
 
 if __name__ == "__main__":
     if not UPSTREAM:
-        print("WARNING: No UPSTREAM set. Set UPSTREAM env var to the API to proxy.", flush=True)
+        print("WARNING: No UPSTREAM configured. Set UPSTREAM env var.", flush=True)
     print(f"Paywall Proxy on :{PORT} → {UPSTREAM or 'none'}", flush=True)
-    print(f"Price: ${PRICE_USD}/req · Free: {FREE_LIMIT}/day · Wallet: {WALLET}", flush=True)
     HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
