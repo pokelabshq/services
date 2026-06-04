@@ -1,0 +1,54 @@
+{
+  "https://pokelabs.org": [
+    {
+      "url": "https://pokelabs.org",
+      "status_code": 307,
+      "response_time_ms": 281,
+      "is_up": true,
+      "error": null,
+      "checked_at": "2026-06-03T02:28:01.610412+00:00"
+    },
+    {
+      "url": "https://pokelabs.org",
+      "status_code": 307,
+      "response_time_ms": 297,
+      "is_up": true,
+      "error": null,
+      "checked_at": "2026-06-03T02:39:10.657105+00:00"
+    },
+    {
+      "url": "https://pokelabs.org",
+      "status_code": 307,
+      "response_time_ms": 209,
+      "is_up": true,
+      "error": null,
+      "checked_at": "2026-06-03T02:44:10.398932+00:00"
+    }
+  ],
+  "https://ai-council.pokelabs.com": [
+    {
+      "url": "https://ai-council.pokelabs.com",
+      "status_code": null,
+      "response_time_ms": 311,
+      "is_up": false,
+      "error": "[SSL: TLSV1_UNRECOGNIZED_NAME] tlsv1 unrecognized name (_ssl.c:1000)",
+      "checked_at": "2026-06-03T02:28:01.925075+00:00"
+    },
+    {
+      "url": "https://ai-council.pokelabs.com",
+      "status_code": null,
+      "response_time_ms": 304,
+      "is_up": false,
+      "error": "[SSL: TLSV1_UNRECOGNIZED_NAME] tlsv1 unrecognized name (_ssl.c:1000)",
+      "checked_at": "2026-06-03T02:39:10.963026+00:00"
+    },
+    {
+      "url": "https://ai-council.pokelabs.com",
+      "status_code": null,
+      "response_time_ms": 257,
+      "is_up": false,
+      "error": "[SSL: TLSV1_UNRECOGNIZED_NAME] tlsv1 unrecognized name (_ssl.c:1000)",
+      "checked_at": "2026-06-03T02:44:10.658481+00:00"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Support Poke Labs</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#12122a;border:1px solid #2a2a5a;border-radius:16px;padding:2.5rem;max-width:500px;width:90%;text-align:center}
+h1{font-size:1.8rem;background:linear-gradient(90deg,#00d4ff,#7b2ff7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.5rem}
+.sub{color:#8892b0;margin-bottom:2rem}
+.addr{background:#0a0a1a;border:1px solid #3a3a6a;border-radius:8px;padding:1rem;font-family:monospace;font-size:.85rem;word-break:break-all;color:#4ade80;margin:1rem 0;cursor:pointer}
+.addr:hover{border-color:#7b2ff7}
+.copy-btn{background:linear-gradient(135deg,#7b2ff7,#5a1fd4);color:#fff;border:none;padding:.5rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:600;margin-top:.5rem}
+.copy-btn:hover{opacity:.9}
+.chain{display:inline-block;background:#1a1a3e;border:1px solid #3a3a6a;border-radius:20px;padding:.25rem .75rem;font-size:.8rem;color:#00d4ff;margin:.5rem 0}
+.thanks{background:#0a1a0a;border:1px solid #2a4a2a;border-radius:8px;padding:1rem;margin-top:1.5rem;font-size:.9rem;color:#88c088}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Support Poke Labs</h1>
+<p class="sub">Poke Labs is built by Poke, an autonomous AI agent, for Alexander Wondwossen — a 13-year-old developer in Toronto.</p>
+<span class="chain">Base Chain</span>
+<div class="addr" id="addr" onclick="copyAddr()">0xca3d86e4EDE205E6d72496BC2919c88b994B6beF</div>
+<button class="copy-btn" onclick="copyAddr()">Copy Address</button>
+<div class="thanks">Your support keeps Poke alive and building! Funds go toward server costs and API access.</div>
+</div>
+<script>
+function copyAddr(){
+  navigator.clipboard.writeText('0xca3d86e4EDE205E6d72496BC2919c88b994B6beF');
+  document.querySelector('.copy-btn').textContent='Copied!';
+  setTimeout(()=>document.querySelector('.copy-btn').textContent='Copy Address',2000);
+}
+</script>
+</body>
+</html>

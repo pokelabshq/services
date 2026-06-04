@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Link Preview API — Poke Labs</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
+.container{max-width:800px;margin:0 auto;padding:40px 20px}
+h1{font-size:2.5em;margin-bottom:10px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{color:#888;font-size:1.2em;margin-bottom:40px}
+.card{background:#151520;border:1px solid #2a2a3a;border-radius:12px;padding:24px;margin-bottom:20px}
+.card h2{color:#667eea;margin-bottom:12px;font-size:1.3em}
+pre{background:#0d0d15;border:1px solid #2a2a3a;border-radius:8px;padding:16px;overflow-x:auto;font-size:.9em;color:#a0e0a0}
+code{font-family:'SF Mono','Fira Code',monospace}
+.endpoint{display:inline-block;background:#667eea;color:#fff;padding:2px 8px;border-radius:4px;font-size:.85em;font-weight:700;margin-right:8px}
+.pricing{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}
+.price-card{flex:1;min-width:150px;background:#0d0d15;border:1px solid #2a2a3a;border-radius:8px;padding:16px;text-align:center}
+.price-card .amount{font-size:2em;font-weight:700;color:#667eea}
+.price-card .label{color:#888;font-size:.9em}
+.try-it{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 32px;border-radius:8px;font-size:1.1em;cursor:pointer;margin-top:16px}
+.try-it:hover{opacity:.9}
+#result{margin-top:16px;display:none}
+.tag{display:inline-block;background:#2a2a3a;color:#aaa;padding:2px 8px;border-radius:4px;font-size:.8em;margin:2px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🔗 Link Preview API</h1>
+<p class="subtitle">Extract title, description &amp; preview images from any URL. Free tier + x402 payments.</p>
+<div class="card">
+<h2>Quick Start</h2>
+<p>POST a URL to get metadata:</p>
+<pre><code><span class="endpoint">POST</span> /api/preview
+Content-Type: application/json
+{"url": "https://github.com"}</code></pre>
+</div>
+<div class="card">
+<h2>Try It</h2>
+<input type="text" id="urlInput" placeholder="https://example.com" style="width:100%;padding:12px;background:#0d0d15;border:1px solid #2a2a3a;border-radius:8px;color:#e0e0e0;font-size:1em">
+<button class="try-it" onclick="tryPreview()">Preview</button>
+<div id="result"></div>
+</div>
+<div class="card">
+<h2>Pricing</h2>
+<div class="pricing">
+<div class="price-card"><div class="amount">3</div><div class="label">Free reqs / IP / day</div></div>
+<div class="price-card"><div class="amount">∞</div><div class="label">Pay per req via x402 USDC</div></div>
+<div class="price-card"><div class="amount">0</div><div class="label">No API key needed</div></div>
+</div>
+</div>
+<div class="card">
+<h2>Endpoints</h2>
+<p><span class="endpoint">GET</span> <code>/api/health</code> — Health check</p>
+<p><span class="endpoint">GET</span> <code>/api/usage</code> — Your IP usage</p>
+<p><span class="endpoint">POST</span> <code>/api/preview</code> — Extract metadata</p>
+</div>
+<footer style="text-align:center;color:#555;margin-top:40px;padding:20px">Built by <strong>Poke Labs</strong> — pokelabs.org</footer>
+</div>
+<script>
+async function tryPreview(){
+  const url=document.getElementById('urlInput').value;
+  if(!url)return alert('Enter a URL');
+  const r=document.getElementById('result');
+  r.style.display='block';
+  r.innerHTML='<pre><code>Loading...</code></pre>';
+  try{
+    const res=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+    const d=await res.json();
+    r.innerHTML='<pre><code>'+JSON.stringify(d,null,2)+'</code></pre>';
+  }catch(e){r.innerHTML='<pre><code>Error: '+e.message+'</code></pre>'}
+}
+</script>
+</body>
+</html>

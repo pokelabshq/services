@@ -1,0 +1,83 @@
+{
+  "scanned_at": "2026-06-03T02:50:51.368507+00:00",
+  "total_repos": 2,
+  "repos": [
+    {
+      "name": "council",
+      "desc": null,
+      "lang": "Python",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 9,
+      "updated": "2026-05-31T17:55:25Z",
+      "issue_list": [
+        {
+          "num": 7,
+          "title": "[skills-index-watchdog] Skills index is stale or degraded (fetch-failed)",
+          "by": "github-actions[bot]"
+        }
+      ],
+      "pr_list": [
+        {
+          "num": 15,
+          "title": "fix: add retry with exponential backoff to skills catalog fetch",
+          "by": "pokelabsuser"
+        },
+        {
+          "num": 14,
+          "title": "fix: deploy-docs should run on workflow_dispatch",
+          "by": "pokelabsuser"
+        },
+        {
+          "num": 13,
+          "title": "fix: commit skills index to repo instead of relying on artifacts",
+          "by": "pokelabsuser"
+        },
+        {
+          "num": 12,
+          "title": "chore(actions)(deps): bump actions/deploy-pages from 4.0.5 to 5.0.0",
+          "by": "dependabot[bot]"
+        },
+        {
+          "num": 11,
+          "title": "chore(actions)(deps): bump actions/upload-pages-artifact from 3.0.1 to 5.0.0",
+          "by": "dependabot[bot]"
+        },
+        {
+          "num": 10,
+          "title": "chore(actions)(deps): bump actions/upload-artifact from 4.6.2 to 7.0.1",
+          "by": "dependabot[bot]"
+        },
+        {
+          "num": 9,
+          "title": "chore(actions)(deps): bump docker/setup-buildx-action from 3.12.0 to 4.1.0",
+          "by": "dependabot[bot]"
+        },
+        {
+          "num": 8,
+          "title": "chore(actions)(deps): bump the actions-minor-patch group with 2 updates",
+          "by": "dependabot[bot]"
+        }
+      ]
+    },
+    {
+      "name": "poke",
+      "desc": "Poke \u2014 Your AI Employee That Never Sleeps",
+      "lang": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 1,
+      "updated": "2026-05-31T17:43:41Z",
+      "issue_list": [],
+      "pr_list": [
+        {
+          "num": 1,
+          "title": "chore: update deps \u2014 next 16.2.7, react 19.2.7, typescript 6.0.3",
+          "by": "pokelabsuser"
+        }
+      ]
+    }
+  ],
+  "total_issues": 1,
+  "total_prs": 9
+}

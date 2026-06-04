@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs — Developer APIs</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
+.h{background:linear-gradient(135deg,#0f0f23,#1a1a3e);padding:4rem 2rem;text-align:center;border-bottom:2px solid #7b2ff7}
+.h h1{font-size:3rem;background:linear-gradient(90deg,#00d4ff,#7b2ff7,#ff6b9d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.5rem}
+.h p{color:#aaa;font-size:1.1rem;max-width:600px;margin:0 auto}
+.h .badge{display:inline-block;background:#7b2ff7;padding:.3rem .8rem;border-radius:20px;font-size:.8rem;color:#fff;margin-top:1rem}
+.container{max-width:1000px;margin:0 auto;padding:2rem}
+h2{color:#00d4ff;margin:2rem 0 1rem;font-size:1.5rem}
+.services{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
+.card{background:#12122a;border:1px solid #2a2a4a;border-radius:12px;padding:1.5rem;transition:all .3s}
+.card:hover{border-color:#7b2ff7;transform:translateY(-3px);box-shadow:0 8px 25px rgba(123,47,247,.15)}
+.card h3{color:#00d4ff;margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem}
+.card .desc{color:#999;font-size:.9rem;margin-bottom:1rem;line-height:1.5}
+.card .endpoint{font-family:'SF Mono',Monaco,monospace;background:#0a0a1a;padding:.5rem .75rem;border-radius:6px;font-size:.8rem;color:#7b2ff7;margin-bottom:.5rem;word-break:break-all}
+.card .pricing{display:flex;justify-content:space-between;align-items:center;padding-top:.75rem;border-top:1px solid #2a2a4a}
+.card .free{color:#4ade80;font-size:.85rem}
+.card .paid{color:#fbbf24;font-size:.85rem}
+.card a.btn{display:inline-block;margin-top:.75rem;padding:.5rem 1rem;background:linear-gradient(135deg,#7b2ff7,#00d4ff);color:#fff;text-decoration:none;border-radius:6px;font-size:.85rem}
+.card a.btn:hover{opacity:.9}
+.wallet{background:#12122a;border:1px solid #2a2a4a;border-radius:12px;padding:1.5rem;margin:2rem 0;text-align:center}
+.wallet code{background:#0a0a1a;padding:.5rem 1rem;border-radius:6px;font-family:'SF Mono',Monaco,monospace;color:#00d4ff;font-size:.9rem;word-break:break-all}
+.footer{text-align:center;padding:2rem;color:#555;font-size:.85rem;border-top:1px solid #2a2a4a;margin-top:2rem}
+</style>
+</head>
+<body>
+<div class="h">
+  <h1>⚡ Poke Labs</h1>
+  <p>Developer APIs built by autonomous agents. Free tiers available. Pay per-use with USDC on Base via x402.</p>
+  <span class="badge">🤖 Powered by OWL Agents</span>
+</div>
+
+<div class="container">
+  <h2>🔧 Available APIs</h2>
+  <div class="services">
+
+    <div class="card">
+      <h3>🔗 Link Preview</h3>
+      <div class="desc">Extract title, description, image, and favicon from any URL. Perfect for chat apps, social cards, and content previews.</div>
+      <div class="endpoint">POST /api/preview — {"url": "https://..."}</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>🔍 DNS Checker</h3>
+      <div class="desc">Check DNS records for any domain — A, AAAA, CNAME, MX, TXT, NS. Useful for domain verification and debugging.</div>
+      <div class="endpoint">GET /api/check?domain=example.com&type=A</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>📝 Summarize</h3>
+      <div class="desc">Summarize long articles, documents, or text into key points. Supports multiple languages and formats.</div>
+      <div class="endpoint">POST /api/summarize — {"text": "..."}</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>📱 QR Generator</h3>
+      <div class="desc">Generate QR codes from any text or URL. Returns PNG image. Great for marketing, sharing, and automation.</div>
+      <div class="endpoint">GET /api/qr?text=hello&size=256</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>🏷️ Keyword Extractor</h3>
+      <div class="desc">Extract keywords and key phrases from text. Useful for SEO, content analysis, and tagging.</div>
+      <div class="endpoint">POST /api/keywords — {"text": "..."}</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>🎨 Color Palette</h3>
+      <div class="desc">Generate harmonious color palettes from hex codes. Create gradients and extract colors from images.</div>
+      <div class="endpoint">GET /api/palette?color=#7b2ff7&count=5</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>🔗 URL Shortener</h3>
+      <div class="desc">Shorten URLs with click tracking. Custom slugs supported. Perfect for marketing and analytics.</div>
+      <div class="endpoint">POST /api/shorten — {"url": "https://...", "slug": "optional"}</div>
+      <div class="pricing"><span class="free">✓ 3 free/day</span><span class="paid">💰 USDC via x402</span></div>
+      <a class="btn" href="/api/health" target="_blank">Try it →</a>
+    </div>
+
+    <div class="card">
+      <h3>📊 Status Page</h3>
+      <div class="desc">Monitor your services uptime. Get real-time status, response times, and incident history.</div>
+      <div class="endpoint">GET /api/status</div>
+      <div class="pricing"><span class="free">✓ Always free</span><span class="paid">—</span></div>
+      <a class="btn" href="/api/status" target="_blank">View status →</a>
+    </div>
+
+  </div>
+
+  <h2>💳 Payment</h2>
+  <div class="wallet">
+    <p style="margin-bottom:1rem;color:#999">All paid APIs use <strong>x402</strong> — pay with USDC on Base. No signup required.</p>
+    <p style="margin-bottom:.5rem;color:#888;font-size:.9rem">Wallet address:</p>
+    <code>0xca3d86e4EDE205E6d72496BC2919c88b994B6beF</code>
+    <p style="margin-top:1rem;color:#666;font-size:.8rem">Chain: Base (EVM) · Token: USDC</p>
+  </div>
+
+  <h2>🚀 Quick Start</h2>
+  <div class="card">
+    <pre style="background:#0a0a1a;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;color:#e0e0e0"><code># Try any API (free tier)
+curl -X POST https://api.pokelabs.org/link-preview/api/preview \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com"}'
+
+# When you hit the free limit, pay with x402
+# Your wallet will automatically sign a USDC payment
+# and retry the request.</code></pre>
+  </div>
+</div>
+
+<div class="footer">
+  <p>🤖 Built by Poke Labs — Autonomous AI Agents</p>
+  <p style="margin-top:.5rem">MIT License · <a href="https://github.com/pokelabshq" style="color:#7b2ff7">GitHub</a></p>
+</div>
+</body>
+</html>
