@@ -1,86 +1,59 @@
 #!/usr/bin/env python3
-"""Daily Briefing Generator for Poke Labs.
-Generates a morning status report: GitHub health, service status, credit usage.
-Outputs formatted text ready for Telegram or console.
-Zero dependencies. stdlib only."""
-import json, urllib.request, urllib.parse, os, time
+"""Poke Labs Daily Briefing Generator v2.
+Generates a morning briefing with repo health, open issues, and service status.
+Outputs Markdown. Zero deps."""
 
-GH_USER = "pokelabshq"
-SERVICES = [
-    ("Link Preview", "http://localhost:8765/api/health"),
-    ("Poke Labs Site", "http://localhost:8766/api/health"),
-    ("Poke Bot", "http://localhost:8770/"),
-    ("Telegram Bot", "http://localhost:8777/api/health"),
-    ("Skills Hub", "http://localhost:8780/api/health"),
-    ("Skills Marketplace", "http://localhost:8781/api/health"),
-    ("Package Registry", "http://localhost:8785/api/health"),
-    ("Pricing API", "http://localhost:8790/api/health"),
-    ("Billing Engine", "http://localhost:8795/api/health"),
-]
+import json, subprocess, socket, os
+from datetime import datetime, timezone
 
-def gh_api(path):
-    url = f"https://api.github.com/{path}"
-    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.v3+json"})
+REPOS = ["pokelabshq/council", "pokelabshq/services", "pokelabshq/cli"]
+SERVICES = [("Site", 8766), ("Link Preview", 8765), ("Poke Bot", 8770),
+            ("Telegram Bot", 8777), ("Dashboard", 8799)]
+
+def gh_json(args):
     try:
-        with urllib.request.urlopen(req, timeout=5) as r:
-            return json.loads(r.read())
-    except Exception as e:
-        return None
+        r = subprocess.run(["gh"] + args, capture_output=True, text=True, timeout=15)
+        return json.loads(r.stdout) if r.returncode == 0 else []
+    except: return []
 
-def check_service(name, url):
+def check_port(port):
     try:
-        req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=3) as r:
-            data = json.loads(r.read())
-            ver = data.get("v", "?")
-            return f"✅ {name} (v{ver})"
-    except:
-        return f"❌ {name} (down)"
-
-def get_repos():
-    data = gh_api(f"users/{GH_USER}/repos?sort=updated&per_page=10")
-    if not data:
-        return "GitHub API unreachable"
-    lines = []
-    for r in data[:5]:
-        lang = r.get("language", "?")
-        updated = r.get("updated_at", "?")[:10]
-        lines.append(f"  📦 {r['name']} ({lang}) — updated {updated}")
-    return "\n".join(lines)
-
-def get_issues():
-    data = gh_api(f"repos/{GH_USER}/council/issues?state=open&per_page=5")
-    if not data:
-        return "  No open issues"
-    lines = []
-    for i in data:
-        labels = ", ".join(l["name"] for l in i.get("labels", []))
-        lines.append(f"  #{i['number']} {i['title']} [{labels}]")
-    return "\n".join(lines) if lines else "  No open issues"
+        s = socket.socket(); s.settimeout(1)
+        s.connect(("127.0.0.1", port)); s.close(); return True
+    except: return False
 
 def generate():
-    now = time.strftime("%A, %B %d, %Y — %I:%M %p UTC", time.gmtime())
-    lines = [
-        f"🐾 **Poke Labs Daily Briefing**",
-        f"📅 {now}",
-        "",
-        "**📊 GitHub Repos:**",
-        get_repos(),
-        "",
-        "**🔴 Open Issues (council):**",
-        get_issues(),
-        "",
-        "**🖥️ Service Status:**",
-    ]
-    for name, url in SERVICES:
-        lines.append(f"  {check_service(name, url)}")
-    lines.extend([
-        "",
-        "**💰 Credits:** Conway credits need funding. USDC wallet empty.",
-        "",
-        "🐾 Poke Labs — Built by Alexander (13, Toronto)",
-    ])
-    return "\n".join(lines)
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    L = [f"☀️ **Poke Labs Daily Briefing**", f"_{now}_", ""]
+
+    for repo in REPOS:
+        name = repo.split("/")[-1]
+        L.append(f"**📦 {name}**")
+        issues = gh_json(["issue", "list", "-R", repo, "--state", "open", "--limit", "5",
+                          "--json", "number,title,updatedAt"])
+        prs = gh_json(["pr", "list", "-R", repo, "--state", "open", "--limit", "5",
+                       "--json", "number,title,updatedAt"])
+        if issues:
+            L.append(f"  Issues ({len(issues)}):")
+            for i in issues:
+                L.append(f"    • #{i['number']} {i['title'][:60]}")
+        else:
+            L.append(f"  Issues: none ✅")
+        if prs:
+            L.append(f"  PRs ({len(prs)}):")
+            for p in prs:
+                L.append(f"    • #{p['number']} {p['title'][:60]}")
+        else:
+            L.append(f"  PRs: none ✅")
+        L.append("")
+
+    L.append("**🔧 Services**")
+    up = down = 0
+    for name, port in SERVICES:
+        if check_port(port): L.append(f"  ✅ {name}"); up += 1
+        else: L.append(f"  ❌ {name}"); down += 1
+    L.append(f"\n_{up} up, {down} down_")
+    return "\n".join(L)
 
 if __name__ == "__main__":
     print(generate())
