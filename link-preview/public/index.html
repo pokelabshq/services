@@ -5,133 +5,114 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Link Preview API — Poke Labs</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:#e0e0e0;line-height:1.6}
-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:4rem 2rem;text-align:center}
-h1{font-size:3rem;background:linear-gradient(90deg,#8b5cf6,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1rem}
-.tagline{font-size:1.25rem;color:#9ca3af;max-width:600px;margin:0 auto}
-.badges{margin-top:1.5rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
-.badge{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);color:#a78bfa;padding:.3rem .8rem;border-radius:99px;font-size:.8rem}
-.container{max-width:900px;margin:0 auto;padding:3rem 2rem}
-h2{font-size:1.5rem;color:#8b5cf6;margin:2rem 0 1rem}
-h3{color:#a78bfa;margin:1.5rem 0 .5rem}
-p{color:#9ca3af;margin-bottom:1rem}
-code{background:#1a1a2e;padding:.2rem .5rem;border-radius:4px;font-size:.9rem;color:#a78bfa}
-pre{background:#12122a;padding:1.5rem;border-radius:8px;overflow-x:auto;font-size:.9rem;border:1px solid #2a2a4a}
-pre code{background:none;padding:0;color:#e0e0e0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin:2rem 0}
-.card{background:#161616;border:1px solid #2a2a4a;border-radius:12px;padding:1.5rem}
-.card h3{margin-top:0}
-.price{font-size:2rem;font-weight:bold;color:#8b5cf6}
-.price small{font-size:1rem;color:#9ca3af}
-.try-box{background:#161616;border:1px solid #2a2a4a;border-radius:12px;padding:2rem;margin:2rem 0}
-.try-box input{width:100%;padding:.75rem;background:#0a0a0a;border:1px solid #333;border-radius:8px;color:#e0e0e0;font-size:1rem;margin-bottom:.75rem}
-.try-box button{width:100%;padding:.75rem;background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer}
-.try-box button:hover{opacity:.9}
-#result{margin-top:1rem;background:#0a0a0a;padding:1rem;border-radius:8px;font-size:.85rem;white-space:pre-wrap;max-height:300px;overflow:auto;display:none}
-.feature-list{list-style:none;padding:0}
-.feature-list li{padding:.5rem 0;color:#9ca3af;border-bottom:1px solid #1a1a1a}
-.feature-list li:before{content:"✅ ";color:#8b5cf6}
-footer{text-align:center;padding:3rem 2rem;color:#555;border-top:1px solid #1a1a1a;margin-top:3rem}
-footer a{color:#8b5cf6;text-decoration:none}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:2rem}
+header{text-align:center;padding:3rem 0 2rem}
+h1{font-size:2.5rem;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:0.5rem}
+.subtitle{color:#888;font-size:1.1rem}
+.try-it{background:#151520;border:1px solid #2a2a3a;border-radius:12px;padding:2rem;margin:2rem 0}
+input[type=text]{width:100%;padding:0.75rem 1rem;border:1px solid #2a2a3a;border-radius:8px;background:#0a0a0f;color:#e0e0e0;font-size:1rem;margin-bottom:1rem}
+input[type=text]:focus{outline:none;border-color:#667eea}
+button{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:0.75rem 2rem;border-radius:8px;font-size:1rem;cursor:pointer;width:100%}
+button:hover{opacity:0.9}
+button:disabled{opacity:0.5;cursor:not-allowed}
+#result{display:none;margin-top:1.5rem;padding:1.5rem;background:#0f0f18;border:1px solid #2a2a3a;border-radius:8px}
+#result .preview-title{font-size:1.2rem;font-weight:600;margin-bottom:0.5rem}
+#result .preview-desc{color:#999;font-size:0.95rem;margin-bottom:0.5rem}
+#result .preview-url{color:#667eea;font-size:0.85rem}
+#result img.preview-img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:1rem}
+.stats{display:flex;gap:2rem;justify-content:center;margin-top:1rem;color:#888;font-size:0.9rem}
+.api-docs{background:#151520;border:1px solid #2a2a3a;border-radius:12px;padding:2rem;margin:2rem 0}
+.api-docs h2{margin-bottom:1rem}
+.endpoint{display:flex;gap:1rem;align-items:center;margin-bottom:0.5rem;font-family:monospace;font-size:0.9rem}
+.method{color:#667eea;font-weight:700;min-width:60px}
+.path{color:#e0e0e0}
+pre{background:#0f0f18;padding:1rem;border-radius:8px;overflow-x:auto;font-size:0.85rem;margin:1rem 0}
+.pricing{display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;margin:2rem 0}
+.price-card{background:#151520;border:1px solid #2a2a3a;border-radius:12px;padding:1.5rem;text-align:center;min-width:200px}
+.price-card h3{margin-bottom:0.5rem}
+.price{font-size:2rem;font-weight:700;color:#667eea}
+.price span{font-size:1rem;color:#888}
+footer{text-align:center;padding:2rem;color:#666;font-size:0.9rem}
 </style>
 </head>
 <body>
+<div class="container">
 <header>
 <h1>🔗 Link Preview API</h1>
-<p class="tagline">Extract titles, descriptions, images, and metadata from any URL. Free tier + x402 payments for unlimited use.</p>
-<div class="badges">
-  <span class="badge">Python stdlib</span>
-  <span class="badge">x402 payments</span>
-  <span class="badge">Open source</span>
-  <span class="badge">MIT license</span>
+<p class="subtitle">Extract titles, descriptions, and images from any URL</p>
+<div class="stats">
+  <span>⚡ Instant</span>
+  <span>🆓 3 free/day</span>
+  <span>🔌 REST API</span>
 </div>
 </header>
 
-<div class="container">
-
-<h2>⚡ Try It Live</h2>
-<div class="try-box">
-<input id="url" placeholder="Paste any URL..." value="https://github.com">
-<button onclick="preview()">Extract Preview</button>
-<pre id="result"></pre>
+<div class="try-it">
+<h2 style="margin-bottom:1rem">⚡ Try It</h2>
+<input type="text" id="urlInput" placeholder="Paste a URL (e.g. https://github.com)" onkeydown="if(event.key==='Enter')preview()">
+<button onclick="preview()" id="previewBtn">Preview</button>
+<div id="result"></div>
 </div>
 
-<h2>💰 Pricing</h2>
-<div class="grid">
-<div class="card">
-<h3>Free</h3>
-<div class="price">$0<small>/day</small></div>
-<ul class="feature-list">
-<li>3 previews per day</li>
-<li>JSON API access</li>
-<li>Title, description, image</li>
-<li>Rate limited by IP</li>
-</ul>
-</div>
-<div class="card" style="border-color:#8b5cf6">
-<h3>Unlimited</h3>
-<div class="price">$0.005<small>/request</small></div>
-<ul class="feature-list">
-<li>Unlimited previews</li>
-<li>x402 auto-payment</li>
-<li>Priority processing</li>
-<li>No rate limits</li>
-</ul>
-</div>
-</div>
+<div class="api-docs">
+<h2>📖 API</h2>
+<div class="endpoint"><span class="method">POST</span><span class="path">/api/preview</span><span> — Rate limited (3/day free)</span></div>
+<div class="endpoint"><span class="method">GET</span><span class="path">/api/preview?url=URL</span><span> — No rate limit</span></div>
+<div class="endpoint"><span class="method">GET</span><span class="path">/api/stats</span><span> — Public usage stats</span></div>
+<div class="endpoint"><span class="method">GET</span><span class="path">/api/health</span><span> — Health check</span></div>
 
-<h2>📡 API</h2>
-<h3>POST /api/preview</h3>
-<pre><code>curl -X POST https://link-preview.pokelabs.org/api/preview \
+<h3 style="margin-top:1.5rem">Example</h3>
+<pre>curl -s -X POST http://localhost:8766/api/preview \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://github.com"}'</code></pre>
-
-<h3>Response</h3>
-<pre><code>{
-  "title": "GitHub · Change is constant...",
-  "description": "Join the world's most widely adopted...",
-  "image": "https://github.githubassets.com/...",
-  "site_name": "GitHub",
-  "favicon": "https://github.com/fluidicon.png",
-  "url": "https://github.com"
-}</code></pre>
-
-<h3>GET /api/health</h3>
-<pre><code>curl https://link-preview.pokelabs.org/api/health
-# {"ok": true, "v": 4, "free_limit": 3}</code></pre>
-
-<h2>🛠️ Tech Stack</h2>
-<div class="grid">
-<div class="card"><h3>Python 3</h3><p>Zero external dependencies. Stdlib only — http.server, urllib, html.parser.</p></div>
-<div class="card"><h3>x402 Payments</h3><p>Built-in USDC payment support on Base chain. Pay per request after free tier.</p></div>
-<div class="card"><h3>Open Source</h3><p>MIT licensed. Fork it, modify it, deploy it yourself. No vendor lock-in.</p></div>
+  -d '{"url": "https://github.com"}'</pre>
 </div>
 
+<div class="pricing">
+<div class="price-card">
+<h3>Free</h3>
+<div class="price">$0<span>/day</span></div>
+<p style="color:#888;margin-top:0.5rem">3 previews per day</p>
+</div>
+<div class="price-card" style="border-color:#667eea">
+<h3>Unlimited</h3>
+<div class="price">$0.01<span>/req</span></div>
+<p style="color:#888;margin-top:0.5rem">Via x402 USDC on Base</p>
+</div>
 </div>
 
 <footer>
-<p>Built with ❤️ by <a href="https://pokelabs.org">Poke Labs</a> — An autonomous AI agent</p>
-<p style="margin-top:.5rem"><a href="https://github.com/pokelabshq/services">GitHub</a> · <a href="/api/health">Health</a></p>
+Built by <strong style="color:#667eea">Poke Labs</strong> · MIT Licensed · <a href="https://github.com/pokelabshq" style="color:#667eea">GitHub</a>
 </footer>
+</div>
 
 <script>
 async function preview(){
-  const url=document.getElementById('url').value;
-  const out=document.getElementById('result');
-  out.style.display='block';
-  out.textContent='Loading...';
+  const url=document.getElementById('urlInput').value.trim();
+  if(!url)return;
+  const btn=document.getElementById('previewBtn');
+  const result=document.getElementById('result');
+  btn.disabled=true;btn.textContent='Loading...';result.style.display='none';
   try{
     const r=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
     const d=await r.json();
-    if(d.error){out.textContent='Error: '+d.error;return}
-    let s='';
-    if(d.image)s+=`🖼️  Image: ${d.image.substring(0,80)}...`+'\n\n';
-    s+=`📌 Title: ${d.title||'N/A'}`+'\n\n';
-    s+=`📝 Description: ${(d.description||'N/A').substring(0,200)}`+'\n\n';
-    s+=`🏷️  Site: ${d.site_name||'N/A'}`;
-    out.textContent=s;
-  }catch(e){out.textContent='Error: '+e;}
+    if(r.status===402){
+      result.innerHTML='<p style="color:#f66">Free limit exceeded. Pay via x402 to continue.</p>';
+    }else if(d.title){
+      result.innerHTML=(d.img?`<img class="preview-img" src="${d.img}" onerror="this.style.display='none'">`:'')+
+        `<div class="preview-title">${d.title}</div>`+
+        `<div class="preview-desc">${d.description||''}</div>`+
+        `<div class="preview-url">${d.site_name||new URL(d.url||url).hostname}</div>`;
+    }else{
+      result.innerHTML='<p style="color:#f66">No preview available for this URL</p>';
+    }
+    result.style.display='block';
+  }catch(e){
+    result.innerHTML=`<p style="color:#f66">Error: ${e.message}</p>`;
+    result.style.display='block';
+  }
+  btn.disabled=false;btn.textContent='Preview';
 }
 </script>
 </body>

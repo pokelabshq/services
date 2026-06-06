@@ -1,0 +1,185 @@
+[
+  {
+    "id": "auto-merge-pr",
+    "name": "Auto-Merge Dependabot PRs",
+    "description": "Automatically approves and squash-merges Dependabot PRs. Only merges semver-patch updates. Waits for CI.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "github",
+      "ci-cd",
+      "automation",
+      "dependabot"
+    ],
+    "price": 0,
+    "installs": 42,
+    "rating": 4.8,
+    "stars": 12
+  },
+  {
+    "id": "link-preview-api",
+    "name": "Link Preview API",
+    "description": "Extract title, description, and Open Graph images from any URL. Free tier: 3/day. Unlimited via x402.",
+    "author": "pokelabshq",
+    "version": "4.0.0",
+    "tags": [
+      "api",
+      "web",
+      "metadata",
+      "x402"
+    ],
+    "price": 0,
+    "installs": 38,
+    "rating": 4.5,
+    "stars": 8
+  },
+  {
+    "id": "poke-bot",
+    "name": "Poke Bot \u2014 GitHub Auto-Triage",
+    "description": "GitHub webhook handler. Auto-labels issues by priority (P0-P3) and PRs by size (S/M/L/XL).",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "github",
+      "automation",
+      "labels",
+      "webhooks"
+    ],
+    "price": 0,
+    "installs": 55,
+    "rating": 4.7,
+    "stars": 15
+  },
+  {
+    "id": "pokelabs-site",
+    "name": "Poke Labs Site + Link Preview",
+    "description": "Combined landing page + Link Preview API. Serves HTML and extracts URL metadata.",
+    "author": "pokelabshq",
+    "version": "7.0.0",
+    "tags": [
+      "web",
+      "api",
+      "landing-page"
+    ],
+    "price": 0,
+    "installs": 29,
+    "rating": 4.6,
+    "stars": 6
+  },
+  {
+    "id": "repo-monitor",
+    "name": "Repo Monitor \u2014 GitHub Health Scanner",
+    "description": "Scans repos for stale PRs, open issues, security alerts, and failed CI runs.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "github",
+      "monitoring",
+      "security",
+      "ci-cd"
+    ],
+    "price": 0,
+    "installs": 31,
+    "rating": 4.4,
+    "stars": 9
+  },
+  {
+    "id": "uptime-monitor",
+    "name": "Uptime Monitor",
+    "description": "HTTP health checker with response time tracking. Alerts on downtime.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "monitoring",
+      "uptime",
+      "alerts",
+      "api"
+    ],
+    "price": 0,
+    "installs": 27,
+    "rating": 4.3,
+    "stars": 7
+  },
+  {
+    "id": "billing-engine",
+    "name": "Billing Engine",
+    "description": "Subscriptions, usage tracking, and invoicing. Free/Pro/Team plans. x402 payments on Base.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "billing",
+      "payments",
+      "x402",
+      "subscriptions"
+    ],
+    "price": 0,
+    "installs": 33,
+    "rating": 4.5,
+    "stars": 11
+  },
+  {
+    "id": "package-registry",
+    "name": "Package Registry",
+    "description": "Publish, search, and version packages. Think npm but minimal. JSON-backed.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "registry",
+      "packages",
+      "publishing"
+    ],
+    "price": 0,
+    "installs": 19,
+    "rating": 4.2,
+    "stars": 5
+  },
+  {
+    "id": "pricing-api",
+    "name": "Pricing API",
+    "description": "Real-time quotes for Poke Labs services. Transparent pricing with volume discounts.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "api",
+      "pricing",
+      "quotes"
+    ],
+    "price": 0,
+    "installs": 15,
+    "rating": 4.1,
+    "stars": 4
+  },
+  {
+    "id": "telegram-bot",
+    "name": "Telegram Bot \u2014 Daily Briefings",
+    "description": "Sends daily status briefings to Telegram. Service health, GitHub stats, system metrics.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "telegram",
+      "notifications",
+      "briefings"
+    ],
+    "price": 0,
+    "installs": 22,
+    "rating": 4.0,
+    "stars": 3
+  },
+  {
+    "id": "skills-marketplace",
+    "name": "Skills Marketplace",
+    "description": "Search, install, and publish skills for AI agents. Web UI + JSON API. All MIT licensed.",
+    "author": "pokelabshq",
+    "version": "1.0.0",
+    "tags": [
+      "skills",
+      "marketplace",
+      "discovery",
+      "api"
+    ],
+    "price": 0,
+    "installs": 1,
+    "rating": 0,
+    "stars": 0
+  }
+]

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs — Skills Market</title>
+<style>
+:root{--bg:#0a0a0f;--card:#13131a;--accent:#6c5ce7;--green:#00b894;--red:#ff6b6b;--text:#e0e0e0;--muted:#888;--border:#2a2a3a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{padding:2rem;text-align:center;background:linear-gradient(135deg,#1a1a2e,#16213e);border-bottom:1px solid var(--border)}
+header h1{font-size:2.2rem;background:linear-gradient(135deg,#6c5ce7,#a29bfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header p{color:var(--muted);margin-top:.5rem}
+.filters{max-width:1200px;margin:2rem auto;padding:0 1rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+.search-input{flex:1;min-width:250px;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;outline:none}
+.search-input:focus{border-color:var(--accent)}
+.filter-select{padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;cursor:pointer}
+.toggle{padding:.5rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-size:.85rem}
+.toggle.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.stats{margin:1rem auto;max-width:1200px;padding:0 1rem;display:flex;gap:2rem;color:var(--muted);font-size:.9rem}
+.grid{max-width:1200px;margin:0 auto;padding:1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.2rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem}
+.card h3{font-size:1.1rem;color:#fff}
+.card h3 span{color:var(--muted);font-weight:400;font-size:.8rem;margin-left:.5rem}
+.source{background:rgba(108,92,231,.2);color:#a29bfe;padding:.2rem .6rem;border-radius:4px;font-size:.75rem;white-space:nowrap}
+.card p{color:var(--muted);font-size:.9rem;line-height:1.5;margin-bottom:.75rem}
+.tags{display:flex;gap:.4rem;flex-wrap:wrap}
+.tag{background:rgba(0,184,148,.15);color:var(--green);padding:.15rem .5rem;border-radius:4px;font-size:.75rem}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)}
+.card-footer a{color:var(--accent);text-decoration:none;font-size:.85rem}
+.card-footer a:hover{text-decoration:underline}
+.loading{text-align:center;padding:4rem;color:var(--muted)}
+.error{text-align:center;padding:2rem;color:var(--red)}
+.empty{text-align:center;padding:3rem;color:var(--muted)}
+.pinned{border-color:var(--green)}
+.pinned::before{content:'📌 ';font-size:.9rem}
+footer{text-align:center;padding:2rem;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:2rem}
+</style>
+</head>
+<body>
+
+<header>
+<h1>🧩 Skills Market</h1>
+<p>Discover, use, and share AI agent skills. Powered by Poke Labs & AI Council.</p>
+</header>
+
+<div class="filters">
+<input class="search-input" type="text" id="search" placeholder="🔍 Search skills by name or description...">
+<select class="filter-select" id="sourceFilter">
+<option value="all">All Sources</option>
+<option value="official">Official</option>
+<option value="community">Community</option>
+</select>
+<button class="toggle" id="pinnedToggle">📌 Pinned Only</button>
+<button class="toggle" id="recentToggle">🕐 Recent</button>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="grid" id="grid">
+<div class="loading">Loading skills...</div>
+</div>
+
+<footer>Poke Labs © 2026 · MIT License · <a href="https://github.com/pokelabshq" style="color:var(--accent);text-decoration:none">GitHub</a></footer>
+
+<script>
+const API = 'https://ai-council.pokelabs.com/docs/api/skills-index.json';
+let allSkills = [];
+let pinned = JSON.parse(localStorage.getItem('poked_skills') || '[]');
+
+async function loadSkills() {
+  try {
+    const r = await fetch(API);
+    const data = await r.json();
+    allSkills = data.skills || [];
+    render();
+  } catch(e) {
+    document.getElementById('grid').innerHTML = '<div class="error">⚠️ Could not load skills index. Try again later.</div>';
+  }
+}
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const src = document.getElementById('sourceFilter').value;
+  const pinnedOnly = document.getElementById('pinnedToggle').classList.contains('active');
+  let filtered = allSkills.filter(s => {
+    const matchQ = !q || s.name.toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q);
+    const matchSrc = src === 'all' || (s.source||'').toLowerCase().includes(src.slice(0,3));
+    const matchPinned = !pinnedOnly || pinned.includes(s.name);
+    return matchQ && matchSrc && matchPinned;
+  });
+  filtered.sort((a,b) => {
+    const pa = pinned.includes(a.name) ? 0 : 1;
+    const pb = pinned.includes(b.name) ? 0 : 1;
+    return pa - pb || a.name.localeCompare(b.name);
+  });
+  document.getElementById('stats').innerHTML = '<span>📦 ' + filtered.length + ' skills</span><span>📌 ' + pinned.length + ' pinned</span>';
+  if (!filtered.length) {
+    document.getElementById('grid').innerHTML = '<div class="empty">No skills match your filters.</div>';
+    return;
+  }
+  document.getElementById('grid').innerHTML = filtered.map(s => {
+    const isPinned = pinned.includes(s.name);
+    return '<div class="card' + (isPinned?' pinned':'') + '">' +
+      '<div class="card-header"><h3>' + s.name + '<span>' + (s.version||'v1') + '</span></h3>' +
+      '<span class="source">' + (s.source||'official') + '</span></div>' +
+      '<p>' + (s.description||'No description.') + '</p>' +
+      '<div class="tags">' + (s.tags||[]).map(t=>'<span class="tag">'+t+'</span>').join('') + '</div>' +
+      '<div class="card-footer"><a href="' + (s.url||'#') + '">View →</a>' +
+      '<span>' + (isPinned?'📌 Pinned':'<span onclick="togglePin(\''+s.name+'\')" style="cursor:pointer">📌 Pin</span>') + '</span></div>' +
+      '</div>';
+  }).join('');
+}
+
+function togglePin(name) {
+  const i = pinned.indexOf(name);
+  if (i >= 0) pinned.splice(i,1); else pinned.push(name);
+  localStorage.setItem('poked_skills', JSON.stringify(pinned));
+  render();
+}
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('sourceFilter').addEventListener('change', render);
+document.getElementById('pinnedToggle').addEventListener('click', function(){this.classList.toggle('active');render()});
+document.getElementById('recentToggle').addEventListener('click', function(){this.classList.toggle('active');render()});
+
+loadSkills();
+</script>
+</body>
+</html>

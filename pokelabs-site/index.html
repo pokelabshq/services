@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs — Link Preview API</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--purple:#667eea;--pink:#f093fb;--dark:#0a0a0f;--card:#151520;--border:#2a2a3a;--text:#e0e0e0;--muted:#888;--green:#4ade80}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--dark);color:var(--text);line-height:1.7}
+a{color:var(--purple);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1000px;margin:0 auto;padding:0 2rem}
+nav{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 0;border-bottom:1px solid var(--border)}
+nav .logo{font-size:1.4rem;font-weight:700;color:var(--text)}nav .logo span{color:var(--purple)}
+nav .links{display:flex;gap:2rem}nav .links a{color:var(--muted);font-size:0.95rem}nav .links a:hover{color:var(--text)}
+.hero{text-align:center;padding:5rem 0 4rem}
+.hero h1{font-size:3.2rem;font-weight:800;background:linear-gradient(135deg,var(--purple),#764ba2,var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1rem;line-height:1.2}
+.hero p{font-size:1.2rem;color:var(--muted);max-width:600px;margin:0 auto 2rem}
+.btn{display:inline-block;padding:0.8rem 2rem;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;border:none;color:#fff}
+.btn:hover{opacity:0.85;text-decoration:none}
+.btn-primary{background:linear-gradient(135deg,var(--purple),#764ba2)}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.hero .buttons{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+section{padding:3rem 0}section h2{font-size:1.8rem;margin-bottom:1.5rem;text-align:center}
+.preview-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:700px;margin:0 auto}
+.input-row{display:flex;gap:0.75rem;margin-bottom:1.5rem}
+.input-row input{flex:1;padding:0.8rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--dark);color:var(--text);font-size:1rem;outline:none}
+.input-row input:focus{border-color:var(--purple)}
+.result-box{background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:1.5rem;min-height:100px}
+.result-box .p-title{font-size:1.2rem;font-weight:600;margin-bottom:0.5rem}
+.result-box .p-desc{color:var(--muted);font-size:0.95rem;margin-bottom:0.5rem}
+.result-box .p-url{color:var(--purple);font-size:0.85rem}
+.result-box .p-img{max-width:100%;border-radius:8px;margin-bottom:0.75rem}
+.result-box .placeholder{color:var(--muted);text-align:center;padding:2rem}
+.result-box .loading{color:var(--muted);text-align:center;padding:2rem}
+.result-box .error{color:#f87171;padding:1rem}
+.pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;max-width:900px;margin:0 auto}
+.price-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;text-align:center;transition:transform .2s}
+.price-card:hover{transform:translateY(-4px)}
+.price-card.popular{border-color:var(--purple);box-shadow:0 0 30px rgba(102,126,234,.2)}
+.price-card h3{font-size:1.3rem;margin-bottom:0.5rem}
+.price-card .price{font-size:2.5rem;font-weight:800;color:var(--purple);margin:0.5rem 0}
+.price-card .price span{font-size:1rem;color:var(--muted);font-weight:400}
+.price-card ul{list-style:none;padding:0;margin:1.5rem 0}
+.price-card ul li{padding:0.4rem 0;color:var(--muted);font-size:0.95rem}
+.price-card .btn{width:100%}
+.badge{display:inline-block;background:#1a3a2a;color:var(--green);padding:0.2rem 0.6rem;border-radius:4px;font-size:0.8rem}
+.code-block{background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:1.5rem;font-family:'SF Mono',Monaco,monospace;font-size:0.9rem;overflow-x:auto;max-width:700px;margin:1rem auto}
+.code-block .c{color:var(--muted)}.code-block .k{color:var(--purple)}.code-block .s{color:var(--green)}
+.api-section{max-width:700px;margin:0 auto}
+.api-endpoint{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem}
+.method{background:var(--purple);color:#fff;padding:0.2rem 0.6rem;border-radius:4px;font-size:0.8rem;font-weight:700}
+.method.post{background:#22c55e}
+footer{text-align:center;padding:3rem 0;border-top:1px solid var(--border);color:var(--muted);font-size:0.9rem}
+footer a{color:var(--purple)}
+@media(max-width:768px){.hero h1{font-size:2.2rem}.pricing{grid-template-columns:1fr}nav .links{display:none}.input-row{flex-direction:column}}
+</style>
+</head>
+<body>
+<nav class="container">
+  <div class="logo">poke<span>labs</span></div>
+  <div class="links"><a href="#demo">Demo</a><a href="#pricing">Pricing</a><a href="#api">API</a></div>
+</nav>
+<section class="hero"><div class="container">
+  <h1>Link Preview API</h1>
+  <p>Extract titles, descriptions, and images from any URL. One API call. No scraping infrastructure needed.</p>
+  <div class="buttons"><a href="#demo" class="btn btn-primary">Try It Free</a><a href="#pricing" class="btn btn-secondary">View Pricing</a></div>
+</div></section>
+<section id="demo"><div class="container">
+  <h2>Live Demo</h2>
+  <div class="preview-box">
+    <div class="input-row"><input type="text" id="urlInput" placeholder="Paste any URL... e.g. https://github.com"><button class="btn btn-primary" onclick="preview()">Preview</button></div>
+    <div class="result-box" id="result"><div class="placeholder">Enter a URL above to see the preview</div></div>
+  </div>
+</div></section>
+<section id="pricing"><div class="container">
+  <h2>Simple Pricing</h2>
+  <div class="pricing">
+    <div class="price-card"><h3>Free</h3><div class="price">$0<span>/mo</span></div><ul><li>3 requests/day</li><li>No signup needed</li><li>JSON response</li></ul><a href="#demo" class="btn btn-secondary">Start Free</a></div>
+    <div class="price-card popular"><h3>Hacker <span class="badge">Popular</span></h3><div class="price">$5<span>/mo</span></div><ul><li>1,000 requests/day</li><li>API key included</li><li>Priority support</li></ul><button class="btn btn-primary" onclick="buyTier('hacker')">Pay with USDC</button></div>
+    <div class="price-card"><h3>Pro</h3><div class="price">$25<span>/mo</span></div><ul><li>10,000 requests/day</li><li>API key included</li><li>Batch endpoint</li></ul><button class="btn btn-primary" onclick="buyTier('pro')">Pay with USDC</button></div>
+    <div class="price-card"><h3>Enterprise</h3><div class="price">$100<span>/mo</span></div><ul><li>100,000 requests/day</li><li>Multiple API keys</li><li>SLA guarantee</li></ul><button class="btn btn-primary" onclick="buyTier('enterprise')">Pay with USDC</button></div>
+  </div>
+</div></section>
+<section id="api"><div class="container">
+  <h2>API Reference</h2>
+  <div class="api-section">
+    <div class="api-endpoint"><span class="method post">POST</span><code>/api/preview</code></div>
+    <div class="code-block"><span class="c">// Extract link preview from any URL</span><br/><span class="k">curl</span> -X POST https://pokelabs.org/api/preview \<br/>&nbsp;&nbsp;-H <span class="s">"Content-Type: application/json"</span> \<br/>&nbsp;&nbsp;-d <span class="s">'{"url": "https://github.com"}'</span></div>
+    <br/><div class="code-block"><span class="c">// Response:</span><br/>{<br/>&nbsp;&nbsp;<span class="s">"title"</span>: <span class="s">"GitHub: Let's build from here"</span>,<br/>&nbsp;&nbsp;<span class="s">"description"</span>: <span class="s">"GitHub is where people build software..."</span>,<br/>&nbsp;&nbsp;<span class="s">"image"</span>: <span class="s">"https://github.com/fluidicon.png"</span>,<br/>&nbsp;&nbsp;<span class="s">"free_remaining"</span>: 2<br/>}</div>
+    <br/><div class="code-block"><span class="c">// With API key (paid tiers):</span><br/><span class="k">curl</span> -X POST https://pokelabs.org/api/preview \<br/>&nbsp;&nbsp;-H <span class="s">"Content-Type: application/json"</span> \<br/>&nbsp;&nbsp;-H <span class="s">"X-API-Key: pk_live_xxxxx"</span> \<br/>&nbsp;&nbsp;-d <span class="s">'{"url": "https://github.com"}'</span></div>
+  </div>
+</div></section>
+<footer><div class="container">
+  <p>Built with ❤️ by <a href="https://github.com/pokelabshq">Poke Labs</a> — Open source, MIT licensed</p>
+  <p style="margin-top:0.5rem">Wallet: 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF (Base)</p>
+</div></footer>
+<script>
+function buyTier(tier){const prices={hacker:5,pro:25,enterprise:100};alert('To get your '+tier+' API key ($'+prices[tier]+'/mo):\n\n1. Send $'+prices[tier]+' USDC to:\n0xca3d86e4EDE205E6d72496BC2919c88b994B6beF\n(on Base chain)\n\n2. Email your tx hash to get your API key!\n\n(Manual for now — automated payments coming soon)');}
+async function preview(){const url=document.getElementById('urlInput').value;const result=document.getElementById('result');if(!url){result.innerHTML='<div class="error">Please enter a URL</div>';return;}result.innerHTML='<div class="loading">Loading preview...</div>';try{const r=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});const d=await r.json();if(d.error==='limit'){result.innerHTML='<div class="error">Free limit reached! Upgrade to a paid tier for unlimited access.<br/>Wallet: '+d.wallet+' ('+d.chain+')</div>';return;}if(d.error){result.innerHTML='<div class="error">Error: '+d.error+'</div>';return;}let html='';if(d.image)html+='<img class="p-img" src="'+d.image+'" />';html+='<div class="p-title">'+(d.title||'No title')+'</div>';html+='<div class="p-desc">'+(d.description||'')+'</div>';html+='<div class="p-url">'+d.url+'</div>';if(d.free_remaining!==undefined)html+='<div style="margin-top:0.5rem;color:var(--muted);font-size:0.85rem">'+d.free_remaining+' free requests remaining today</div>';result.innerHTML=html;}catch(e){result.innerHTML='<div class="error">Failed: '+e.message+'</div>';}}
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')preview();});
+</script>
+</body>
+</html>

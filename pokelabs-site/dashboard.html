@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--purple:#667eea;--pink:#f093fb;--dark:#0a0a0f;--card:#151520;--border:#2a2a3a;--text:#e0e0e0;--muted:#888;--green:#4ade80;--yellow:#fbbf24;--red:#f87171}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--dark);color:var(--text);line-height:1.7}
+.container{max-width:1100px;margin:0 auto;padding:0 2rem}
+nav{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 0;border-bottom:1px solid var(--border)}
+nav .logo{font-size:1.4rem;font-weight:700;color:var(--text)}nav .logo span{color:var(--purple)}
+nav a{color:var(--muted);text-decoration:none;font-size:0.95rem}nav a:hover{color:var(--text)}
+h1{font-size:2rem;margin:2rem 0 0.5rem}
+.subtitle{color:var(--muted);margin-bottom:2rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem}
+.card .label{font-size:0.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem}
+.card .value{font-size:2rem;font-weight:700}
+.card .value.green{color:var(--green)}.card .value.purple{color:var(--purple)}.card .value.yellow{color:var(--yellow)}
+.card .sub{font-size:0.85rem;color:var(--muted);margin-top:0.25rem}
+table{width:100%;border-collapse:collapse;margin-top:1rem}
+th,td{text-align:left;padding:0.75rem;border-bottom:1px solid var(--border);font-size:0.9rem}
+th{color:var(--muted);font-weight:600;font-size:0.8rem;text-transform:uppercase}
+.badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600}
+.badge.green{background:#1a3a2a;color:var(--green)}.badge.purple{background:#2a1a4a;color:var(--purple)}.badge.yellow{background:#3a2a1a;color:var(--yellow)}
+.section{margin-bottom:3rem}
+.btn{display:inline-block;padding:0.6rem 1.5rem;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;border:none;color:#fff;background:linear-gradient(135deg,var(--purple),#764ba2)}
+.btn:hover{opacity:0.85}
+</style>
+</head>
+<body>
+<nav class="container">
+  <div class="logo">poke<span>labs</span></div>
+  <a href="/">← Back to Home</a>
+</nav>
+<div class="container">
+  <h1>📊 API Dashboard</h1>
+  <p class="subtitle">Real-time Link Preview API metrics</p>
+  
+  <div class="grid" id="stats-grid">
+    <div class="card"><div class="label">Version</div><div class="value purple" id="v">—</div></div>
+    <div class="card"><div class="label">Unique IPs (24h)</div><div class="value" id="ips">—</div></div>
+    <div class="card"><div class="label">Requests (24h)</div><div class="value" id="reqs">—</div></div>
+    <div class="card"><div class="label">Active API Keys</div><div class="value green" id="keys">—</div></div>
+    <div class="card"><div class="label">Free Tier Limit</div><div class="value yellow" id="limit">—</div><div class="sub">per IP per day</div></div>
+    <div class="card"><div class="label">Revenue (est.)</div><div class="value green" id="revenue">$0</div><div class="sub">USDC on Base</div></div>
+  </div>
+
+  <div class="section">
+    <h2>API Endpoints</h2>
+    <div class="card">
+      <table>
+        <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth</th></tr>
+        <tr><td><span class="badge purple">GET</span></td><td>/api/health</td><td>Health check & version</td><td>None</td></tr>
+        <tr><td><span class="badge purple">GET</span></td><td>/api/stats</td><td>Usage statistics</td><td>None</td></tr>
+        <tr><td><span class="badge green">POST</span></td><td>/api/preview</td><td>Extract link preview</td><td>Optional API key</td></tr>
+        <tr><td><span class="badge green">POST</span></td><td>/api/key/create</td><td>Generate new API key</td><td>None</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Pricing Tiers</h2>
+    <div class="grid">
+      <div class="card"><div class="label">Free</div><div class="value">$0</div><div class="sub">3 req/day • No signup</div></div>
+      <div class="card"><div class="label">Hacker</div><div class="value">$5/mo</div><div class="sub">1K req/day • API key</div></div>
+      <div class="card"><div class="label">Pro</div><div class="value">$25/mo</div><div class="sub">10K req/day • API key</div></div>
+      <div class="card"><div class="label">Enterprise</div><div class="value">$100/mo</div><div class="sub">100K req/day • Multi-key</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadStats(){
+  try{
+    const r=await fetch('/api/stats');
+    const d=await r.json();
+    document.getElementById('v').textContent='v'+(d.version||'?');
+    document.getElementById('ips').textContent=d.ips||0;
+    document.getElementById('reqs').textContent=d.reqs_24h||0;
+    document.getElementById('keys').textContent=d.active_keys||0;
+    document.getElementById('limit').textContent=(d.free_limit||3)+'/day';
+    const rev=(d.active_keys||0)*5;
+    document.getElementById('revenue').textContent='$'+rev;
+  }catch(e){console.error(e);}
+}
+loadStats();
+setInterval(loadStats,30000);
+</script>
+</body>
+</html>
