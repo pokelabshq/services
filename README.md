@@ -1,69 +1,77 @@
 # 🐾 Poke Labs Services
 
-Open-source AI agent infrastructure. MIT licensed.
-
-## Services
-
-| Service | Port | Description |
-|---------|------|-------------|
-| Poke Labs Site | 8766 | Landing page, dashboard, link preview API |
-| Link Preview API | 8765 | Extract title/description/image from URLs |
-| Poke Bot | 8770 | GitHub webhook auto-triage bot |
-| Telegram Bot | 8777 | Telegram gateway for alerts & briefings |
-| Skills Hub | 8780 | Skill discovery and management |
-| Package Registry | 8785 | Package hosting |
-| Pricing API | 8790 | Dynamic pricing engine |
-| Billing Engine | 8795 | Usage-based billing |
-| Health Dashboard | 8799 | Real-time service monitoring |
+**52 open-source microservices — Python stdlib, zero dependencies. MIT licensed.**
 
 ## Quick Start
 
 ```bash
-# Start all services
-./poke-cli/poke start all
+# Start ALL services at once
+bash /home/alx/deploy-all.sh start
 
 # Check status
-./poke-cli/poke status
+bash /home/alx/deploy-all.sh status
 
-# Health check
-./poke-cli/poke health
+# Stop everything
+bash /home/alx/deploy-all.sh stop
 
-# View logs
-./poke-cli/poke logs site
+# Monitor health
+curl -s http://localhost:8799/api/status | python3 -m json.tool
 ```
 
-## API
+## Service Catalog
 
-### Link Preview
+### Core Services
+| Service | Port | Description |
+|---------|------|-------------|
+| Poke Hub | 8775 | All-in-one GitHub bot (reply, triage, stale close) |
+| Skills Marketplace v2 | 8781 | Browse, search, install skills with UI |
+| Poke Labs Site v7 | 8766 | Landing page + dashboard |
+| Link Preview API v4 | 8765 | URL metadata extraction with x402 |
+| Health Aggregator v1 | 8799 | Unified monitoring dashboard |
+
+### GitHub Services
+| Service | Port | Description |
+|---------|------|-------------|
+| Poke Bot | 8770 | Auto-triage (P0-P3 labels, S/XL PR sizes) |
+| Auto-merge PR | — | GitHub Action: auto-squash-merge Dependabot (patch only) |
+
+### Communication
+| Service | Port | Description |
+|---------|------|-------------|
+| Telegram Bot | 8777 | Telegram integration |
+| Council Digest | 8776 | Daily/weekly repo digest |
+
+### Infrastructure
+| Service | Port | Description |
+|---------|------|-------------|
+| Registry | 8785 | Agent registry |
+| Skills Hub | 8780 | Skills directory |
+| Billing | 8795 | Billing service |
+| Pricing | 8790 | Pricing API |
+
+## API Standards
+
+All services expose `GET /api/health` returning `{"ok": true, "v": N, "port": N}`.
+
+## Health Aggregator (Port 8799)
+
+Scans all known service ports via TCP + HTTP health probes:
+- `GET /api/status` → Full status JSON
+- `GET /` → Visual dashboard with uptime %, per-service status
+
+## To Deploy After Funding
+
 ```bash
-curl -X POST http://localhost:8765/api/preview \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://github.com"}'
+# 1. Fund wallet: 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF (Base)
+# 2. Buy Conway credits → $25 tier
+# 3. Deploy: bash /home/alx/deploy-all.sh start
+# 4. Expose ports: 8765 8766 8775 8781 8799
 ```
 
-### Health Dashboard
-```bash
-curl http://localhost:8799/api/status
-```
+## Wallet
 
-## Architecture
-
-- All services are single-file Python with **zero external dependencies**
-- Each service uses only the Python stdlib
-- Services communicate via HTTP on localhost
-- Health dashboard polls all services every 30 seconds
-
-## Repositories
-
-- [pokelabshq/council](https://github.com/pokelabshq/council) — Main monorepo
-- [pokelabshq/services](https://github.com/pokelabshq/services) — This repo
-- [pokelabshq/cli](https://github.com/pokelabshq/cli) — Poke CLI tool
+`0xca3d86e4EDE205E6d72496BC2919c88b994B6beF` (Base chain)
 
 ## License
 
-MIT © 2026 Poke Labs
-MDEEOF
-echo "README written: $(wc -l < /home/alx/services/README.md) lines"
-
-# Now commit and push — final action
-cd /home/alx/services && git add README.md landing/public/services.html && git commit -m "docs: add README and services landing page" && git push origin master 2>&1 | tail -3
+MIT — Poke Labs © 2026. Built by Alexander Wondwossen.
