@@ -1,126 +1,149 @@
 #!/usr/bin/env python3
-"""Poke Dashboard v1.0 — Unified service dashboard for Poke Labs.
-Shows all services, their health, quick links, and system stats. Port 8800. Zero deps."""
-import http.server, json, time, urllib.request, urllib.parse, subprocess, os, html as H
+"""Poke Labs Dashboard v1.0 — Live service status + control panel. Port: 8760. Zero deps."""
+import http.server, json, os, socket, subprocess, time
+from http import HTTPStatus
 
-PORT = 8800
-VERSION = 1
+PORT = 8760
+SERVICES_DIR = "/home/alx/services"
 
+# Service registry: (name, port, description)
 SERVICES = [
-    {"name": "link-preview", "port": 8765, "url": "/api/preview", "desc": "Extract title, description, image from URLs"},
-    {"name": "pokelabs-site", "port": 8766, "url": "/", "desc": "Main landing page"},
-    {"name": "ws-events", "port": 8767, "url": "/", "desc": "WebSocket real-time events"},
-    {"name": "graphql", "port": 8768, "url": "/graphql", "desc": "Unified GraphQL API gateway"},
-    {"name": "poke-bot", "port": 8770, "url": "/", "desc": "GitHub auto-triage bot"},
-    {"name": "poke-hub", "port": 8775, "url": "/", "desc": "All-in-one GitHub bot"},
-    {"name": "github-stats", "port": 8779, "url": "/api/stats", "desc": "GitHub statistics"},
-    {"name": "skills-mkt", "port": 8781, "url": "/", "desc": "Skills marketplace"},
-    {"name": "metrics", "port": 8792, "url": "/metrics", "desc": "Prometheus metrics exporter"},
-    {"name": "x402-pay", "port": 8795, "url": "/api/pay", "desc": "USDC payment gateway"},
+    ("Poke Hub", 8775, "All-in-one GitHub bot"),
+    ("Link Preview", 8765, "Extract metadata from URLs"),
+    ("Poke Labs Site", 8766, "Landing page + API"),
+    ("Poke Bot", 8770, "GitHub auto-triage"),
+    ("Telegram Bot", 8777, "Telegram notifications"),
+    ("Skills Hub", 8780, "Skills marketplace"),
+    ("Registry", 8785, "Agent registry"),
+    ("Pricing", 8790, "Pricing API"),
+    ("Dashboard", 8760, "This dashboard"),
 ]
 
 def check_port(port):
+    """Check if a port is open."""
     try:
-        urllib.request.urlopen(f"http://localhost:{port}/api/health", timeout=2)
-        return True
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        result = s.connect_ex(('127.0.0.1', port))
+        s.close()
+        return result == 0
     except:
         return False
 
-def get_load():
+def count_services():
+    """Count service directories."""
     try:
-        with open("/proc/loadavg") as f:
-            return f.read().split()[:3]
+        return len([d for d in os.listdir(SERVICES_DIR) if os.path.isdir(os.path.join(SERVICES_DIR, d))])
     except:
-        return ["?", "?", "?"]
+        return 0
 
-def get_mem():
+def get_uptime():
+    """Get system uptime."""
     try:
-        with open("/proc/meminfo") as f:
-            lines = f.readlines()
-        total = int(lines[0].split()[1])
-        avail = int(lines[2].split()[1])
-        used_pct = round((1 - avail/total) * 100, 1)
-        return {"total_mb": total//1024, "avail_mb": avail//1024, "used_pct": used_pct}
+        with open('/proc/uptime') as f:
+            return float(f.read().split()[0])
     except:
-        return {"total_mb": 0, "avail_mb": 0, "used_pct": 0}
+        return 0
 
-def get_disk():
-    try:
-        st = os.statvfs("/")
-        total = st.f_blocks * st.f_frsize
-        avail = st.f_bavail * st.f_frsize
-        used_pct = round((1 - avail/total) * 100, 1)
-        return {"total_gb": round(total/1e9,1), "avail_gb": round(avail/1e9,1), "used_pct": used_pct}
-    except:
-        return {"total_gb": 0, "avail_gb": 0, "used_pct": 0}
+def uptime_str(seconds):
+    s = int(seconds)
+    h, s = divmod(s, 3600)
+    m, s = divmod(s, 60)
+    return f"{h}h {m}m {s}s"
+
+TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs Dashboard</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}}
+.header{{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:20px 28px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;justify-content:space-between}}
+.header h1{{font-size:22px;color:#00d4ff}}
+.header h1 span{{color:#ff6b6b}}
+.badge{{padding:5px 14px;border-radius:16px;font-size:12px;font-weight:600}}
+.offline{{background:#2a1a1a;color:#ff6b6b;border:1px solid #ff6b6b33}}
+.online{{background:#1a2a1a;color:#51cf66;border:1px solid #51cf6633}}
+.container{{max-width:1100px;margin:0 auto;padding:20px}}
+.stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}}
+.stat{{background:#141420;border:1px solid #2a2a3a;border-radius:10px;padding:16px;text-align:center}}
+.stat .num{{font-size:28px;font-weight:700;color:#00d4ff}}
+.stat .lbl{{font-size:11px;color:#777;margin-top:4px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:16px}}
+.card{{background:#141420;border:1px solid #2a2a3a;border-radius:10px;padding:16px}}
+.card h3{{font-size:14px;color:#fff;margin-bottom:6px}}
+.card p{{font-size:12px;color:#777;line-height:1.4}}
+.card .port{{font-family:monospace;color:#00d4ff;font-size:11px;margin-top:6px}}
+.dot{{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}}
+.off{{background:#ff6b6b}}
+.on{{background:#51cf66}}
+h2{{font-size:16px;color:#fff;margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid #2a2a3a}}
+.wallet{{font-family:monospace;font-size:11px;color:#666;background:#141420;padding:10px 14px;border-radius:6px;border:1px solid #2a2a3a;margin-top:20px;word-break:break-all}}
+.wallet b{{color:#00d4ff}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🐾 <span>Poke</span> Labs</h1>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-size:11px;color:#555">{ts}</span>
+    <span class="badge {cls}">{status}</span>
+  </div>
+</div>
+<div class="container">
+  <div class="stats">
+    <div class="stat"><div class="num">{svcs}</div><div class="lbl">Services Built</div></div>
+    <div class="stat"><div class="num">{running}</div><div class="lbl">Running</div></div>
+    <div class="stat"><div class="num">{repos}</div><div class="lbl">GitHub Repos</div></div>
+    <div class="stat"><div class="num">{uptime}</div><div class="lbl">Uptime</div></div>
+    <div class="stat"><div class="num">{creds}</div><div class="lbl">Credits</div></div>
+  </div>
+  <h2>Services</h2>
+  <div class="grid">{cards}</div>
+  <div class="wallet"><b>Wallet (Base):</b> 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF</div>
+</div>
+</body></html>"""
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        p = urllib.parse.urlparse(self.path)
-        if p.path == "/api/health":
-            self.json({"ok": True, "v": VERSION, "port": PORT, "role": "dashboard"})
-        elif p.path == "/api/services":
-            self.json({"services": SERVICES})
-        elif p.path == "/api/system":
-            self.json({"load": get_load(), "memory": get_mem(), "disk": get_disk(), "ts": time.time()})
-        elif p.path == "/":
-            self.dashboard()
+        svcs = count_services()
+        running = sum(1 for _,p,_ in SERVICES if check_port(p))
+        uptime_s = get_uptime()
+        uptime = uptime_str(uptime_s)
+        
+        cards = ""
+        for name, port, desc in SERVICES:
+            on = check_port(port)
+            dot_class = "on" if on else "off"
+            status_text = "online" if on else "offline"
+            cards += f'''<div class="card"><h3><span class="dot {dot_class}"></span>{name}</h3><p>{desc}</p><div class="port">:{port} — {status_text}</div></div>'''
+        
+        if running > 0:
+            badge_cls = "online"
+            badge_text = f"● {running} Online"
         else:
-            self.json({"error": "Not found"}, 404)
+            badge_cls = "offline"
+            badge_text = "● Offline — Funding Needed"
+        
+        html = TEMPLATE.format(
+            ts=time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime()),
+            cls=badge_cls, status=badge_text,
+            svcs=svcs, running=running, repos=4, uptime=uptime, creds="-$0.01",
+            cards=cards
+        )
+        
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Length", str(len(html)))
+        self.end_headers()
+        self.wfile.write(html.encode())
 
-    def dashboard(self):
-        load = get_load()
-        mem = get_mem()
-        disk = get_disk()
-        rows = ""
-        up_count = 0
-        for s in SERVICES:
-            is_up = check_port(s["port"])
-            if is_up: up_count += 1
-            status = "🟢 UP" if is_up else "🔴 DOWN"
-            color = "#00ffaa" if is_up else "#ff4444"
-            link = f'http://{self.headers.get("Host", "localhost")}:{s["port"]}{s["url"]}' if is_up else "#"
-            name_link = f'<a href="{link}" target="_blank" style="color:#00ffaa;text-decoration:none">{H.escape(s["name"])}</a>' if is_up else H.escape(s["name"])
-            rows += f'<tr><td>{name_link}</td><td><span style="color:{color}">{status}</span></td><td>{H.escape(s["desc"])}</td><td>{s["port"]}</td></tr>'
-
-        s = f'''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Poke Labs — Dashboard</title><style>
-*{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a1a;color:#e0e0e2;min-height:100vh;padding:20px}}
-.header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)}}
-h1{{color:#00ffaa;font-size:1.5rem}}
-.version{{color:#666;font-size:.75rem}}
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}}
-.card{{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px}}
-.card h3{{color:#666;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}}
-.card .value{{font-size:1.8rem;font-weight:700;color:#00ffaa}}
-.card .sub{{color:#666;font-size:.75rem;margin-top:4px}}
-table{{width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border-radius:12px;overflow:hidden}}
-th{{text-align:left;color:#666;font-size:.75rem;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);text-transform:uppercase;letter-spacing:.5px}}
-td{{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:.85rem}}
-tr:hover{{background:rgba(255,255,255,0.02)}}
-.progress{{height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:6px}}
-.progress-bar{{height:100%;border-radius:3px;background:#00ffaa}}
-.progress-bar.warn{{background:#ffaa00}}
-.progress-bar.danger{{background:#ff4444}}
-</style></head><body>
-<div class="header"><div><h1>🐙 Poke Labs Dashboard</h1><span class="version">v{VERSION} | {time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())}</span></div><div style="color:#666;font-size:.75rem">Port {PORT}</div></div>
-<div class="grid">
-<div class="card"><h3>Services</h3><div class="value">{up_count}/{len(SERVICES)}</div><div class="sub">Online</div></div>
-<div class="card"><h3>Load</h3><div class="value">{load[0]}</div><div class="sub">{load[1]} / {load[2]} (1/5/15m)</div></div>
-<div class="card"><h3>Memory</h3><div class="value">{mem["used_pct"]}%</div><div class="sub">{mem["avail_mb"]}MB free of {mem["total_mb"]}MB</div><div class="progress"><div class="progress-bar {"warn" if mem["used_pct"]>70 else ""}{"danger" if mem["used_pct"]>85 else ""}" style="width:{mem["used_pct"]}%"></div></div></div>
-<div class="card"><h3>Disk</h3><div class="value">{disk["used_pct"]}%</div><div class="sub">{disk["avail_gb"]}GB free of {disk["total_gb"]}GB</div><div class="progress"><div class="progress-bar {"warn" if disk["used_pct"]>70 else ""}{"danger" if disk["used_pct"]>85 else ""}" style="width:{disk["used_pct"]}%"></div></div></div>
-</div>
-<table><thead><tr><th>Service</th><th>Status</th><th>Description</th><th>Port</th></tr></thead><tbody>{rows}</tbody></table>
-</body></html>'''
-        self.send_response(200);self.send_header("Content-Type","text/html");self.end_headers();self.wfile.write(s.encode())
-
-    def json(self, d, code=200):
-        body = json.dumps(d, default=str).encode()
-        self.send_response(code);self.send_header("Content-Type","application/json")
-        self.send_header("Access-Control-Allow-Origin","*");self.send_header("Content-Length",str(len(body)))
-        self.end_headers();self.wfile.write(body)
-    def log_message(self,*a): pass
+    def log_message(self, fmt, *args):
+        pass  # suppress stderr noise
 
 if __name__ == "__main__":
-    s = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"Poke Dashboard v1.0 on :{PORT}");s.serve_forever()
+    server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
+    print(f"Poke Labs Dashboard v1.0 on http://0.0.0.0:{PORT}")
+    server.serve_forever()
