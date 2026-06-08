@@ -1,0 +1,141 @@
+name: 🧪 Poke Labs CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
+
+jobs:
+  discover-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Discover services
+        id: discover
+        run: |
+          echo "services<<EOF" >> $GITHUB_OUTPUT
+          for dir in */; do
+            if [ -f "$dir/server.py" ]; then
+              echo "$dir" | tr -d '/' >> $GITHUB_OUTPUT
+            fi
+          done
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Syntax check all services
+        run: |
+          errors=0
+          for dir in */; do
+            if [ -f "$dir/server.py" ]; then
+              echo "🔍 Checking $dir/server.py"
+              python3 -c "import py_compile; py_compile.compile('$dir/server.py', doraise=True)" 2>&1 || errors=$((errors+1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "❌ $errors service(s) have syntax errors"
+            exit 1
+          fi
+          echo "✅ All services pass syntax check"
+      
+      - name: Check for stdlib-only imports
+        run: |
+          errors=0
+          STDLIB="os sys json re math random datetime time socket http urllib email hashlib base64 html io csv collections itertools functools pathlib string struct threading subprocess signal logging argparse configparser tempfile shutil glob typing dataclasses enum uuid secrets hmac html textwrap traceback warnings contextlib decimal fractions statistics queue copy pprint operator"
+          for dir in */; do
+            if [ -f "$dir/server.py" ]; then
+              # Check for pip-installable imports
+              imports=$(grep -E "^import |^from " "$dir/server.py" | grep -v "from \." | grep -v "from typing" | grep -v "from dataclasses" | grep -v "from enum" | grep -v "from collections" | grep -v "from functools" | grep -v "from itertools" | grep -v "from pathlib" | grep -v "from datetime" | grep -v "from time" | grep -v "from json" | grep -v "from os" | grep -v "from sys" | grep -v "from re" | grep -v "from math" | grep -v "from random" | grep -v "from socket" | grep -v "from http" | grep -v "from urllib" | grep -v "from email" | grep -v "from hashlib" | grep -v "from base64" | grep -v "from io" | grep -v "from csv" | grep -v "from string" | grep -v "from struct" | grep -v "from threading" | grep -v "from subprocess" | grep -v "from signal" | grep -v "from logging" | grep -v "from argparse" | grep -v "from tempfile" | grep -v "from shutil" | grep -v "from glob" | grep -v "from uuid" | grep -v "from secrets" | grep -v "from hmac" | grep -v "from html" | grep -v "from textwrap" | grep -v "from traceback" | grep -v "from warnings" | grep -v "from contextlib" | grep -v "from decimal" | grep -v "from fractions" | grep -v "from statistics" | grep -v "from queue" | grep -v "from copy" | grep -v "from pprint" | grep -v "from operator" | grep -v "from configparser" || true)
+              if [ -n "$imports" ]; then
+                echo "⚠️ $dir: non-stdlib imports detected:"
+                echo "$imports"
+                errors=$((errors+1))
+              fi
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "⚠️ $errors service(s) use non-stdlib packages"
+          else
+            echo "✅ All services use stdlib only"
+          fi
+      
+      - name: Start services and health check
+        timeout-minutes: 5
+        run: |
+          passed=0
+          failed=0
+          for dir in */; do
+            if [ -f "$dir/server.py" ]; then
+              # Extract port
+              port=$(grep -oP 'PORT\s*=\s*\K\d+' "$dir/server.py" | head -1)
+              if [ -z "$port" ]; then
+                port=$(grep -oP 'port\s*=\s*\K\d+' "$dir/server.py" | head -1)
+              fi
+              if [ -n "$port" ]; then
+                echo "🚀 Starting $dir on port $port"
+                nohup python3 "$dir/server.py" > "/tmp/${dir%/}.log" 2>&1 &
+                sleep 2
+                if curl -sf "http://localhost:$port/api/health" > /dev/null 2>&1; then
+                  echo "✅ $dir health check passed"
+                  passed=$((passed+1))
+                elif curl -sf "http://localhost:$port/" > /dev/null 2>&1; then
+                  echo "✅ $dir root check passed"
+                  passed=$((passed+1))
+                else
+                  echo "❌ $dir health check failed"
+                  cat "/tmp/${dir%/}.log" 2>/dev/null || true
+                  failed=$((failed+1))
+                fi
+                fuser -k "$port/tcp" 2>/dev/null || true
+              fi
+            fi
+          done
+          echo ""
+          echo "📊 Results: $passed passed, $failed failed"
+          if [ $failed -gt 0 ]; then
+            exit 1
+          fi
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Security scan
+        run: |
+          issues=0
+          for dir in */; do
+            if [ -f "$dir/server.py" ]; then
+              # Check for hardcoded secrets
+              if grep -nE '(password|secret|token|key)\s*=\s*["\x27][^"\x27]+["\x27]' "$dir/server.py" | grep -v "API_KEY" | grep -v "CONWAY" | grep -v "GITHUB" | grep -v "TELEGRAM" | grep -v "# " > /dev/null 2>&1; then
+                echo "⚠️ $dir: possible hardcoded secret"
+                issues=$((issues+1))
+              fi
+              # Check for eval/exec usage
+              if grep -nE '\beval\s*\(' "$dir/server.py" > /dev/null 2>&1; then
+                echo "⚠️ $dir: uses eval()"
+                issues=$((issues+1))
+              fi
+              # Check for shell=True
+              if grep -nE 'shell\s*=\s*True' "$dir/server.py" > /dev/null 2>&1; then
+                echo "⚠️ $dir: uses shell=True"
+                issues=$((issues+1))
+              fi
+            fi
+          done
+          if [ $issues -gt 0 ]; then
+            echo "⚠️ $issues security concern(s) found"
+          else
+            echo "✅ No obvious security issues"
+          fi

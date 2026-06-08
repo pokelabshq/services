@@ -1,0 +1,39 @@
+name: 🤖 Auto-merge Dependabot
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for CI
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.ref }}
+          check-name: '🧪 Poke Labs CI'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+      - name: Approve
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Squash merge (patch only)
+        run: |
+          PR_DATA=$(gh pr view "$PR_URL" --json title,labels)
+          if echo "$PR_DATA" | grep -q "semver-patch"; then
+            gh pr merge --squash --auto "$PR_URL"
+          else
+            echo "⏭️ Not a patch update — skipping auto-merge"
+          fi
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
