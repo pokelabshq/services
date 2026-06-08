@@ -74,7 +74,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 length=int(self.headers.get("Content-Length",0))
                 body=self.rfile.read(length)
-                # Verify signature if secret set
                 if SECRET:
                     sig=self.headers.get("X-Hub-Signature-256","")
                     expected="sha256="+hmac.new(SECRET.encode(),body,hashlib.sha256).hexdigest()
