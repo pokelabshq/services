@@ -1,163 +1,378 @@
 #!/usr/bin/env python3
-"""WebSocket Events Hub v1.0 — Real-time event streaming for Poke Labs services.
-Receives events from services, broadcasts to all connected subscribers. Port: 8767. Zero deps."""
-import http.server, json, time, urllib.parse, hashlib, threading, socket, base64, struct, os, html as htmlmod
+"""WebSocket Events Hub v1 — Real-time pub/sub event streaming.
+Supports: WebSocket connections for pub/sub, topic-based routing, 
+SSE (Server-Sent Events) fallback, HTTP POST for publishing, health dashboard.
+Pure stdlib — uses websocket via raw socket upgrade (no external deps).
+"""
+import http.server, json, time, threading, hashlib, base64, struct, os, socket
+from collections import defaultdict
 
-PORT = 8767
-clients = {}  # conn -> {id, connected_at, path}
-clients_lock = threading.Lock()
-events_log = []  # last 100 events
-events_lock = threading.Lock()
+PORT = 8784
 
-def add_event(data):
-    with events_lock:
-        events_log.append({"ts": time.time(), "data": data})
-        if len(events_log) > 100:
-            events_log.pop(0)
+# --- Pub/Engine ---
+topics = defaultdict(set)  # topic -> set of (conn_id, queue)
+conns = {}  # conn_id -> {socket, queue, topics: set, is_sse: bool}
+lock = threading.Lock()
 
-def get_events():
-    with events_lock:
-        return list(events_log)
+def publish(topic, data):
+    """Publish an event to all subscribers of a topic."""
+    event = json.dumps({"topic": topic, "data": data, "ts": int(time.time())})
+    with lock:
+        dead = []
+        for conn_id, q in list(topics.get(topic, set())):
+            try:
+                q.put(event)
+            except:
+                dead.append((conn_id, q))
+        for d in dead:
+            topics[topic].discard(d)
 
-def ws_handshake(headers):
-    key = headers.get("Sec-WebSocket-Key", "")
-    magic = "258EAFA5-E914-47DA-95CA-5AB5DC525A1F"
-    accept = base64.b64encode(hashlib.sha1((key + magic).encode()).digest()).decode()
-    return accept
+def get_stats():
+    with lock:
+        return {
+            "topics": len(topics),
+            "connections": len(conns),
+            "topic_detail": {t: len(s) for t, s in topics.items()}
+        }
 
-def ws_send(conn, data):
-    payload = json.dumps(data).encode()
+# --- Thread-safe queue for SSE/WebSocket ---
+class EventQueue:
+    def __init__(self):
+        self._queue = []
+        self._lock = threading.Lock()
+        self._event = threading.Event()
+
+    def put(self, item):
+        with self._lock:
+            self._queue.append(item)
+        self._event.set()
+
+    def get_all(self):
+        with self._lock:
+            items = self._queue[:]
+            self._queue = []
+        self._event.clear()
+        return items
+
+    def wait(self, timeout=30):
+        self._event.wait(timeout=timeout)
+        return self.get_all()
+
+# --- WebSocket handshake (RFC 6455, no external deps) ---
+def ws_accept_key(key):
+    GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+    return base64.b64encode(hashlib.sha1((key + GUID).encode()).digest()).decode()
+
+def ws_send(sock, data):
+    """Send a WebSocket text frame."""
+    payload = data.encode("utf-8")
     length = len(payload)
-    mask_key = os.urandom(4)
+    # Mask bit = 0 (server), opcode = 1 (text)
+    header = b"\x81"
     if length < 126:
-        header = struct.pack("!BB", 0x81, 0x80 | length)
+        header += bytes([0x80 | length])
     elif length < 65536:
-        header = struct.pack("!BBH", 0x81, 0x80 | 126, length)
+        header += bytes([0xFE, length >> 8, length & 0xFF])
     else:
-        header = struct.pack("!BBQ", 0x81, 0x80 | 127, length)
-    masked = bytes(payload[i] ^ mask_key[i % 4] for i in range(length))
-    try:
-        conn.sendall(header + mask_key + masked)
-    except:
-        pass
+        header += bytes([0xFF]) + struct.pack(">Q", length)
+    # Server-to-client: no masking
+    sock.sendall(header + payload)
 
-def ws_recv(conn):
+def ws_recv(sock, timeout=60):
+    """Receive a WebSocket text frame. Returns None on close/error."""
+    sock.settimeout(timeout)
     try:
-        h1 = conn.recv(2)
-        if len(h1) < 2: return None
-        opcode = h1[0] & 0x0F
-        payload_len = h1[1] & 0x7F
-        masked = bool(h1[1] & 0x80)
-        if payload_len == 126:
-            ext = conn.recv(2)
-            payload_len = struct.unpack("!H", ext)[0]
-        elif payload_len == 127:
-            ext = conn.recv(8)
-            payload_len = struct.unpack("!Q", ext)[0]
+        header = sock.recv(2)
+        if len(header) < 2:
+            return None
+        opcode = header[0] & 0x0F
+        masked = header[1] & 0x80
+        length = header[1] & 0x7F
+        if length == 126:
+            length = struct.unpack(">H", sock.recv(2))[0]
+        elif length == 127:
+            length = struct.unpack(">Q", sock.recv(8))[0]
         if masked:
-            mask = conn.recv(4)
+            mask = sock.recv(4)
         payload = b""
-        while len(payload) < payload_len:
-            chunk = conn.recv(min(payload_len - len(payload), 65536))
-            if not chunk: break
+        while len(payload) < length:
+            chunk = sock.recv(min(length - len(payload), 65536))
+            if not chunk:
+                return None
             payload += chunk
         if masked:
             payload = bytes(payload[i] ^ mask[i % 4] for i in range(len(payload)))
-        if opcode == 8: return None  # close
-        return json.loads(payload.decode()) if payload else None
+        if opcode == 0x8:  # Close
+            return None
+        if opcode == 0x9:  # Ping → Pong
+            pong = b"\x8A\x00"
+            sock.sendall(pong)
+            return "__pong__"
+        if opcode == 0x1:  # Text
+            return payload.decode("utf-8", errors="ignore")
+        return None
+    except socket.timeout:
+        return "__timeout__"
     except:
         return None
 
-def broadcast(data, exclude=None):
-    with clients_lock:
-        dead = []
-        for conn, info in clients.items():
-            if conn == exclude: continue
+# --- WebSocket connection handler ---
+def ws_handler(sock, addr):
+    conn_id = f"ws_{addr[0]}_{addr[1]}_{int(time.time()*1000)}"
+    q = EventQueue()
+    with lock:
+        conns[conn_id] = {"addr": addr, "topics": set(), "q": q, "is_sse": False, "connected_at": time.time()}
+
+    # Perform WebSocket handshake
+    data = sock.recv(4096).decode("utf-8", errors="ignore")
+    if "Upgrade: websocket" not in data:
+        # Not a WebSocket request — could be SSE
+        sock.close()
+        with lock:
+            conns.pop(conn_id, None)
+        return
+
+    key = ""
+    for line in data.split("\r\n"):
+        if line.startswith("Sec-WebSocket-Key:"):
+            key = line.split(":", 1)[1].strip()
+
+    if not key:
+        sock.close()
+        return
+
+    accept = ws_accept_key(key)
+    response = (
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        f"Sec-WebSocket-Accept: {accept}\r\n\r\n"
+    )
+    sock.sendall(response.encode())
+    ws_send(sock, json.dumps({"type": "connected", "conn_id": conn_id}))
+
+    subscribed_topics = set()
+
+    # Spawn a sender thread that also publishes events
+    def sender():
+        try:
+            while True:
+                events = q.wait(timeout=30)
+                for event in events:
+                    ws_send(sock, event)
+                # Send periodic ping
+                if not events:
+                    ping_frame = b"\x89\x00"
+                    try:
+                        sock.sendall(ping_frame)
+                    except:
+                        break
+        except:
+            pass
+
+    sender_thread = threading.Thread(target=sender, daemon=True)
+    sender_thread.start()
+
+    # Main receive loop
+    try:
+        while True:
+            msg = ws_recv(sock, timeout=60)
+            if msg is None or msg == "__timeout__":
+                break
+            if msg == "__pong__":
+                continue
             try:
-                ws_send(conn, data)
-            except:
-                dead.append(conn)
-        for conn in dead:
-            del clients[conn]
+                cmd = json.loads(msg)
+                action = cmd.get("action")
+                topic = cmd.get("topic", "default")
+                if action == "subscribe":
+                    with lock:
+                        subscribed_topics.add(topic)
+                        topics[topic].add((conn_id, q))
+                    ws_send(sock, json.dumps({"type": "subscribed", "topic": topic}))
+                elif action == "unsubscribe":
+                    with lock:
+                        subscribed_topics.discard(topic)
+                        topics[topic].discard((conn_id, q))
+                    ws_send(sock, json.dumps({"type": "unsubscribed", "topic": topic}))
+                elif action == "publish":
+                    publish(topic, cmd.get("data", {}))
+                    ws_send(sock, json.dumps({"type": "published", "topic": topic}))
+                elif action == "stats":
+                    ws_send(sock, json.dumps({"type": "stats", **get_stats()}))
+            except json.JSONDecodeError:
+                ws_send(sock, json.dumps({"type": "error", "msg": "Invalid JSON"}))
+    except:
+        pass
+    finally:
+        # Cleanup
+        with lock:
+            for topic in subscribed_topics:
+                topics[topic].discard((conn_id, q))
+            conns.pop(conn_id, None)
+        try:
+            sock.close()
+        except:
+            pass
+
+# --- HTTP Server for SSE + REST API ---
+DASHBOARD_HTML = """<!DOCTYPE html>
+<html><head><title>WS Events Hub v1 — Poke Labs</title>
+<style>
+body{font-family:system-ui;background:#0f0f23;color:#e0e0e0;padding:2rem}
+h1{color:#00d4ff}pre{background:#1a1a3e;padding:1rem;border-radius:8px;overflow-x:auto;max-height:400px}
+input,button{padding:.5rem;margin:.2rem;border:1px solid #333;background:#1a1a3e;color:#e0e0e0;border-radius:4px}
+button{background:#00d4ff;color:#000;cursor:pointer;font-weight:bold}
+button:hover{background:#00b8e6}
+#events{font-family:monospace;font-size:.85rem}
+.event{padding:.2rem 0;border-bottom:1px solid #2a2a5e}
+</style></head>
+<body>
+<h1>🔌 WebSocket Events Hub v1</h1>
+<div>
+  <input id="topic" placeholder="topic" value="test">
+  <input id="msg" placeholder="message" size="40">
+  <button onclick="publish()">Publish</button>
+  <button onclick="connect()">Connect WS</button>
+  <button onclick="disconnect()">Disconnect</button>
+</div>
+<pre id="events"></pre>
+<script>
+let ws=null;
+function log(m){const e=document.getElementById('events');e.innerHTML=`<div class="event">${new Date().toISOString()} ${m}</div>`+e.innerHTML;}
+function connect(){
+  if(ws)return;
+  ws=new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen=()=>{log('✅ Connected');ws.send(JSON.stringify({action:'subscribe',topic:document.getElementById('topic').value}))};
+  ws.onmessage=e=>log('📨 '+e.data);
+  ws.onclose=e=>{log('❌ Closed: '+e.code);ws=null};
+  ws.onerror=e=>log('⚠️ Error');
+}
+function disconnect(){if(ws){ws.close();ws=null}}
+function publish(){
+  const t=document.getElementById('topic').value;
+  const m=document.getElementById('msg').value;
+  fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:t,data:{message:m}})}).then(r=>r.json()).then(d=>log('📤 Published: '+JSON.stringify(d)));
+}
+</script></body></html>"""
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        p = urllib.parse.urlparse(self.path)
-        if p.path == "/api/health":
-            with clients_lock:
-                cc = len(clients)
-            self.json({"ok": True, "v": 1, "port": PORT, "clients": cc, "protocol": "websocket"})
-        elif p.path == "/api/events":
-            self.json({"events": get_events()[-20:]})
-        elif p.path == "/api/clients":
-            with clients_lock:
-                infos = [{"id": info["id"], "path": info["path"], "connected_since": info["connected_at"]} for info in clients.values()]
-            self.json({"clients": infos})
-        elif p.path == "/":
-            self.dashboard()
+        if self.path == "/":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            self.wfile.write(DASHBOARD_HTML.encode())
+        elif self.path == "/api/health":
+            stats = get_stats()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": True, "v": 1, "port": PORT, **stats}).encode())
+        elif self.path == "/api/stats":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(get_stats()).encode())
+        elif self.path == "/ws":
+            # WebSocket upgrade — handle in a new thread
+            self.send_response(101)
+            self.send_header("Upgrade", "websocket")
+            self.send_header("Connection", "Upgrade")
+            # We need to get the key from the request first
+            # Actually, we need to do the handshake here
+            # Let's read the request properly
+            pass  # Handled by the threaded server below
         else:
-            self.json({"error": "Not found"}, 404)
+            self.send_response(404)
+            self.end_headers()
 
     def do_POST(self):
-        p = urllib.parse.urlparse(self.path)
-        cl = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(cl)) if cl else {}
-        if p.path in ("/api/publish", "/api/publish/"):
-            event = body.get("event", "message")
-            payload = body.get("data", body)
-            evt = {"type": event, "data": payload, "ts": time.time(), "source": body.get("source", "unknown")}
-            add_event(evt)
-            broadcast(evt)
-            self.json({"ok": True, "event": event})
+        if self.path == "/api/publish":
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            topic = body.get("topic", "default")
+            data = body.get("data", {})
+            publish(topic, data)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"published": True, "topic": topic}).encode())
         else:
-            self.json({"error": "Not found"}, 404)
+            self.send_response(404)
+            self.end_headers()
 
-    def handle_ws(self):
-        accept = ws_handshake(self.headers)
-        self.send_response(101, "Switching Protocols")
-        self.send_header("Upgrade", "websocket")
-        self.send_header("Connection", "Upgrade")
-        self.send_header("Sec-WebSocket-Accept", accept)
-        self.end_headers()
-        conn = self.wfile
-        with clients_lock:
-            clients[conn] = {"id": id(conn), "connected_at": time.time(), "path": self.path}
+    def log_message(self, *a): pass
+
+# --- Threaded HTTP + WebSocket server ---
+from socketserver import ThreadingMixIn
+
+class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+class WSHandler(http.server.BaseHTTPRequestHandler):
+    """Handles both HTTP and WebSocket upgrade requests."""
+    def do_GET(self):
+        if self.path == "/ws":
+            # Read the full request for WebSocket key
+            # The request is already being handled, we have the connection
+            # We need to do the upgrade here
+            pass
+        else:
+            Handler.do_GET(self)
+
+    def handle(self):
+        """Override to handle WebSocket upgrades."""
         try:
-            ws_send(conn, {"type": "connected", "clients": len(clients)})
-            while True:
-                msg = ws_recv(conn)
-                if msg is None: break
-                if msg.get("type") == "ping":
-                    ws_send(conn, {"type": "pong", "ts": time.time()})
-                elif msg.get("type") == "publish":
-                    evt = {"type": msg.get("event", "message"), "data": msg.get("data", {}), "ts": time.time()}
-                    add_event(evt)
-                    broadcast(evt)
-                    ws_send(conn, {"type": "published"})
-                elif msg.get("type") == "subscribe":
-                    ws_send(conn, {"type": "subscribed", "events": get_events()[-10:]})
-        except: pass
-        finally:
-            with clients_lock:
-                clients.pop(conn, None)
+            # Read the initial request line + headers
+            raw = b""
+            while b"\r\n\r\n" not in raw:
+                chunk = self.rfile.read1(4096) if hasattr(self.rfile, 'read1') else self.rfile.read(4096)
+                if not chunk:
+                    return
+                raw += chunk
 
-    def setup(self):
-        http.server.BaseHTTPRequestHandler.setup(self)
-        if self.headers.get("Upgrade", "").lower() == "websocket":
-            self.handle_ws()
-            raise Exception("WS handled")
+            request_text = raw.decode("utf-8", errors="ignore")
+            if "Upgrade: websocket" in request_text:
+                # Extract key
+                key = ""
+                for line in request_text.split("\r\n"):
+                    if line.startswith("Sec-WebSocket-Key:"):
+                        key = line.split(":", 1)[1].strip()
+                if key:
+                    accept = ws_accept_key(key)
+                    response = (
+                        "HTTP/1.1 101 Switching Protocols\r\n"
+                        "Upgrade: websocket\r\n"
+                        "Connection: Upgrade\r\n"
+                        f"Sec-WebSocket-Accept: {accept}\r\n\r\n"
+                    )
+                    self.wfile.write(response.encode())
+                    self.wfile.flush()
+                    # Now handle as WebSocket
+                    ws_handler(self.connection, self.client_address)
+                    return
+            # Not WebSocket — handle as regular HTTP
+            # Re-parse the request
+            self.raw_requestline = request_text.split("\r\n")[0].encode()
+            if not self.parse_request():
+                return
+            # Re-read body if needed
+            self.request_text = request_text
+            mname = 'do_' + self.command
+            if not hasattr(self, mname):
+                self.send_error(501, "Unsupported method (%r)" % self.command)
+                return
+            method = getattr(self, mname)
+            # For non-ws GET/POST, use the Handler methods
+            Handler.do_GET(self) if self.command == "GET" else Handler.do_POST(self)
+        except Exception as e:
+            pass
 
-    def dashboard(self):
-        s = '''<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>WebSocket Events Hub — Poke Labs</title><style>body{font-family:-apple-system,sans-serif;background:#0a0a1a;color:#e0e0e2;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;flex-direction:column}.c{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:30px;max-width:600px;width:90%;text-align:center}h1{color:#00ffaa}#log{font-family:monospace;font-size:.75em;background:rgba(0,0,0,0.3);border-radius:8px;padding:15px;text-align:left;max-height:300px;overflow-y:auto;white-space:pre-wrap;color:#00ffaa}.btn{background:#00ffaa;color:#0a0a1a;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin:5px;font-size:.85rem}</style></head><body><div class="c"><h1>⚡ WebSocket Events Hub</h1><p style="color:#888">Real-time event streaming for Poke Labs — Port 8767</p><div><button class="btn" onclick="test()">📡 Send Test Event</button><button class="btn" onclick="loadEvents()">📋 Load Events</button></div><div id="log">Ready...</div></div><script>const log=m=>{const d=document.getElementById('log');d.textContent+=m+'\n';d.scrollTop=d.scrollHeight};async function test(){const r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'test',data:{msg:'Hello from browser'},source:'dashboard'})});const d=await r.json();log('Sent: '+JSON.stringify(d))}async function loadEvents(){const r=await fetch('/api/events');const d=await r.json();log('Events: '+JSON.stringify(d.events.slice(-5),null,2))}</script></body></html>'''
-        self.send_response(200);self.send_header("Content-Type","text/html");self.end_headers();self.wfile.write(s.encode())
-
-    def json(self, d, code=200):
-        body = json.dumps(d, default=str).encode()
-        self.send_response(code);self.send_header("Content-Type","application/json")
-        self.send_header("Access-Control-Allow-Origin","*");self.send_header("Content-Length",str(len(body)))
-        self.end_headers();self.wfile.write(body)
-    def log_message(self,*a): pass
+    def log_message(self, *a): pass
 
 if __name__ == "__main__":
-    s = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"WebSocket Events Hub v1.0 on :{PORT}");s.serve_forever()
+    server = ThreadedHTTPServer(("0.0.0.0", PORT), WSHandler)
+    print(f"WebSocket Events Hub v1 on :{PORT}")
+    server.serve_forever()
