@@ -1,98 +1,136 @@
 #!/usr/bin/env python3
-"""Skills Marketplace v2 — Dynamic skill browser for Poke Labs"""
-import http.server, json, os, re, subprocess
+"""Skills Marketplace v2 — Skill discovery, search, and installation."""
+import http.server, json, os, time, urllib.parse
 
-PORT = int(os.environ.get("PORT", 8781))
-REPO = "/home/alx/council"
-SERVICES = "/home/alx/services"
+PORT = 8781
+VERSION = "2.0"
 
-def scan_skills():
-    skills = []
-    # Scan services dir for SKILL.md files
-    if os.path.isdir(SERVICES):
-        for name in sorted(os.listdir(SERVICES)):
-            skill_md = os.path.join(SERVICES, name, "SKILL.md")
-            server_py = os.path.join(SERVICES, name, "server.py")
-            if not os.path.exists(skill_md) and not os.path.exists(server_py):
-                continue
-            desc, port, tags = "", 0, []
-            if os.path.exists(skill_md):
-                with open(skill_md) as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith("#"):
-                            desc = line[:150]
-                            break
-                pm = re.search(r'[Pp]ort[:\s]+(\d{4,5})', open(skill_md).read())
-                if pm: port = int(pm.group(1))
-            if os.path.exists(server_py):
-                tags.append("service")
-                if not port:
-                    pm = re.search(r'PORT\s*=\s*(\d{4,5})', open(server_py).read())
-                    if pm: port = int(pm.group(1))
-            skills.append({"name": name, "description": desc or f"{name} service", "port": port, "tags": tags or ["skill"]})
-    return skills
+SKILLS = [
+    {"id":"link-preview-api","name":"Link Preview API","cat":"api","desc":"Extract title, description, image from any URL","ver":"4.0","port":8765,"free":3,"price":"x402"},
+    {"id":"pokelabs-site","name":"Poke Labs Site","cat":"web","desc":"Landing page + dashboard server","ver":"7.0","port":8766,"free":True,"price":"free"},
+    {"id":"github-reply-bot","name":"GitHub Reply Bot","cat":"bot","desc":"Auto-reply to issues/PRs with context","ver":"1.0","port":8775,"free":True,"price":"free"},
+    {"id":"poke-hub","name":"Poke Hub","cat":"bot","desc":"All-in-one GitHub bot (reply+stale+label+dash)","ver":"1.2","port":8775,"free":True,"price":"free"},
+    {"id":"poke-bot","name":"Poke Bot","cat":"bot","desc":"Auto-triage and priority labeling","ver":"1.0","port":8770,"free":True,"price":"free"},
+    {"id":"council","name":"AI Council","cat":"automation","desc":"Stale issue check, dep update, digest","ver":"2.0","port":None,"free":True,"price":"free"},
+    {"id":"auto-merge-pr","name":"Auto-Merge PRs","cat":"automation","desc":"Auto-merge Dependabot semver-patch PRs","ver":"1.0","port":None,"free":True,"price":"free"},
+    {"id":"github-stats","name":"GitHub Stats","cat":"analytics","desc":"Organization contributor statistics","ver":"1.0","port":8779,"free":True,"price":"free"},
+    {"id":"prometheus-metrics","name":"Prometheus Metrics","cat":"monitoring","desc":"Standard /metrics Prometheus endpoint","ver":"1.0","port":8790,"free":True,"price":"free"},
+    {"id":"health-aggregator","name":"Health Aggregator","cat":"monitoring","desc":"Aggregate health checks across services","ver":"1.0","port":8799,"free":True,"price":"free"},
+    {"id":"x402-gateway","name":"x402 Gateway","cat":"payments","desc":"Accept USDC micropayments via x402","ver":"1.0","port":8795,"free":False,"price":"gateway"},
+    {"id":"deploy-manager","name":"Deploy Manager","cat":"devops","desc":"Fleet management for all services","ver":"1.0","port":8798,"free":True,"price":"free"},
+]
 
-def get_repos():
-    try:
-        r = subprocess.run(["gh", "api", "users/pokelabshq/repos", "--jq", ".[].full_name"],
-                          capture_output=True, text=True, timeout=10)
-        return [x.strip() for x in r.stdout.strip().split("\n") if x.strip()]
-    except: return []
+CATS = sorted(set(s["cat"] for s in SKILLS))
 
-PAGE = """<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Poke Labs — Skills Marketplace v2</title>
+PAGE = """<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Skills Marketplace — Poke Labs</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
-.hdr{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:2rem;text-align:center;border-bottom:1px solid #2a2a4a}
-.hdr h1{font-size:2.5rem;background:linear-gradient(90deg,#00d4ff,#7b2ff7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hdr p{color:#888;margin-top:.5rem}
-.sb{max-width:600px;margin:2rem auto;padding:0 1rem}
-.sb input{width:100%;padding:.75rem 1rem;border:1px solid #333;border-radius:8px;background:#111;color:#fff;font-size:1rem;outline:none}
-.sb input:focus{border-color:#7b2ff7}
-.gr{max-width:1200px;margin:0 auto;padding:0 1rem 2rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
-.card{background:#111;border:1px solid #222;border-radius:12px;padding:1.5rem;transition:transform .2s,border-color .2s}
-.card:hover{transform:translateY(-2px);border-color:#7b2ff7}
-.card h3{color:#00d4ff;margin-bottom:.5rem}
-.card p{color:#999;font-size:.9rem;line-height:1.5}
-.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
-.tag{background:#1a1a2e;padding:.25rem .5rem;border-radius:4px;font-size:.75rem;color:#7b2ff7}
-.btn{margin-top:1rem;padding:.5rem 1rem;background:linear-gradient(90deg,#7b2ff7,#00d4ff);border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:600}
-.btn:hover{opacity:.9}
-.ft{text-align:center;padding:2rem;color:#555;border-top:1px solid #222}
-.ft a{color:#7b2ff7;text-decoration:none}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0a0a1a;color:#e0e0e2;line-height:1.6;min-height:100vh}
+.h{background:linear-gradient(135deg,#0a0a1a,#1a1a3e);padding:50px 20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04)}
+h1{font-size:2.4rem;color:#00ffaa;margin-bottom:6px}
+.sub{color:#666;font-size:.85rem}
+.filters{display:flex;justify-content:center;gap:8px;padding:16px;flex-wrap:wrap}
+.fp{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:6px 16px;border-radius:20px;font-size:.75rem;color:#888;cursor:pointer}
+.fp.active,.fp:hover{border-color:#00ffaa;color:#00ffaa}
+.sb{max-width:400px;margin:0 auto 20px;position:relative}
+.sb input{width:100%;padding:12px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e0e0e2;font-size:.9rem;outline:none}
+.sb input:focus{border-color:#00ffaa}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+.stats{display:flex;justify-content:center;gap:20px;margin-bottom:20px}
+.st{text-align:center;font-size:.7rem;color:#666}.st b{color:#00ffaa;font-size:1.3rem;display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;transition:all .2s}
+.card:hover{border-color:rgba(0,255,170,0.3);transform:translateY(-2px)}
+.card h3{font-size:1rem;color:#e0e0e2;margin-bottom:4px}
+.card .desc{color:#888;font-size:.8rem;margin-bottom:12px;min-height:36px}
+.card .meta{display:flex;justify-content:space-between;align-items:center}
+.badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:.65rem;font-weight:700}
+.badge-free{background:rgba(0,255,170,0.15);color:#00ffaa}
+.badge-x402{background:rgba(100,150,255,0.15);color:#6496ff}
+.cat{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.6rem;background:rgba(255,255,255,0.06);color:#666;margin-bottom:8px}
+.btn{padding:6px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.7rem;font-weight:700;background:#00ffaa;color:#0a0a1a}
+.btn:hover{filter:brightness(1.1)}
+.footer{text-align:center;padding:40px;color:#444;font-size:.75rem}
 </style></head><body>
-<div class="hdr"><h1>🐾 Skills Marketplace v2</h1><p>__SKILL_COUNT__ skills across __REPO_COUNT__ repos</p></div>
-<div class="sb"><input type="text" id="q" placeholder="Search skills..." oninput="flt()"></div>
-<div class="gr" id="g"></div>
-<div class="ft"><p>🐾 <a href="https://github.com/pokelabshq">Poke Labs on GitHub</a> · MIT Licensed</p></div>
+<div class="h"><h1>⚡ Skills Marketplace</h1><p class="sub">Open-source AI agent skills by Poke Labs — MIT Licensed</p></div>
+<div class="stats"><div class="st"><b>""" + str(len(SKILLS)) + """</b>Skills</div><div class="st"><b>""" + str(len(CATS)) + """</b>Categories</div><div class="st"><b>100%</b>Open Source</div></div>
+<div class="filters"><div class="fp active" onclick="filter('all')">All</div>""" + ''.join(f'<div class="fp" onclick="filter(\'{c}\')">{c.title()}</div>' for c in CATS) + """</div>
+<div class="sb"><input type="text" id="search" placeholder="Search skills..." oninput="doSearch()"></div>
+<div class="container"><div class="grid" id="grid"></div></div>
+<div class="footer">2026 Poke Labs &middot; MIT License &middot; <a href="/api/skills" style="color:#00ffaa">JSON API</a></div>
 <script>
-const skills=__SKILLS__;
-const g=document.getElementById('g');
-function render(sk){
-g.innerHTML=sk.map(s=>`<div class="card"><h3>${s.name}</h3><p>${s.description}</p><div class="tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div><button class="btn" onclick="alert('Install: cat /home/alx/services/${s.name}/SKILL.md')">Install</button></div>`).join('');
+const skills=""" + json.dumps(SKILLS) + """;
+function render(skts){
+  document.getElementById("grid").innerHTML=skts.map(s=>`
+    <div class="card" data-cat="${s.cat}">
+      <span class="cat">${s.cat}</span>
+      <h3>${s.name}</h3>
+      <div class="desc">${s.desc}</div>
+      <div class="meta">
+        <div>
+          <span class="badge ${s.price==='free'?'badge-free':'badge-x402'}">${s.price}</span>
+          <span style="color:#555;font-size:.65rem;margin-left:8px">v${s.ver}</span>
+        </div>
+        <button class="btn" onclick="install('${s.id}')">Install</button>
+      </div>
+    </div>
+  `).join("")||'<div style="text-align:center;color:#555;padding:40px;grid-column:1/-1">No skills match your search</div>';
 }
-function flt(){const q=document.getElementById('q').value.toLowerCase();render(skills.filter(s=>s.name.toLowerCase().includes(q)||s.description.toLowerCase().includes(q)));}
+function filter(c){
+  document.querySelectorAll('.fp').forEach(e=>e.classList.toggle('active',e.textContent.trim().toLowerCase()===(c==='all'?'all':c)));
+  render(c==='all'?skills:skills.filter(s=>s.cat===c));
+}
+function doSearch(){
+  const q=document.getElementById("search").value.toLowerCase();
+  render(skills.filter(s=>s.name.toLowerCase().includes(q)||s.desc.toLowerCase().includes(q)||s.cat.includes(q)));
+}
+function install(id){
+  fetch("/api/install",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})}).then(r=>r.json()).then(d=>{
+    alert(d.ok?`✅ ${d.skill} installed to /home/alx/skills/${d.skill}/`:(d.error||"Install failed"));
+  });
+}
 render(skills);
 </script></body></html>"""
 
-class H(http.server.BaseHTTPRequestHandler):
+class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        p=self.path.split("?")[0]
-        if p=="/":
-            s=scan_skills();rs=get_repos()
-            page=PAGE.replace("__SKILLS__",json.dumps(s)).replace("__SKILL_COUNT__",str(len(s))).replace("__REPO_COUNT__",str(len(rs)))
-            self.send_response(200);self.send_header("Content-Type","text/html");self.end_headers();self.wfile.write(page.encode())
-        elif p=="/api/skills":
-            self.send_response(200);self.send_header("Content-Type","application/json");self.end_headers();self.wfile.write(json.dumps(scan_skills()).encode())
-        elif p=="/api/health":
-            self.send_response(200);self.send_header("Content-Type","application/json");self.end_headers();self.wfile.write(json.dumps({"ok":True,"v":2,"skills":len(scan_skills())}).encode())
-        else:self.send_response(404);self.end_headers()
-    def log_message(self,*a):pass
+        p=urllib.parse.urlparse(self.path)
+        if p.path=="/": self._html(PAGE)
+        elif p.path=="/api/skills": self._json({"skills":SKILLS,"total":len(SKILLS),"v":VERSION,"ts":time.time()})
+        elif p.path=="/api/categories": self._json({"categories":CATS})
+        elif p.path=="/api/health": self._json({"ok":True,"v":VERSION,"port":PORT,"skills":len(SKILLS)})
+        else: self._json({"error":"not found"},404)
+
+    def do_POST(self):
+        p=urllib.parse.urlparse(self.path)
+        if p.path=="/api/install":
+            try:
+                body=json.loads(self.rfile.read(int(self.headers.get("Content-Length",0))))
+                sid=body.get("id","")
+                skill=next((s for s in SKILLS if s["id"]),None)
+                if not skill: self._json({"error":"skill not found"},404);return
+                dest=os.path.join("/home/alx/skills",skill["id"])
+                os.makedirs(dest,exist_ok=True)
+                with open(os.path.join(dest,"SKILL.md"),"w") as f:
+                    f.write(f"# {skill['name']}\n\n{skill['desc']}\n\nVersion: {skill['ver']}\nCategory: {skill['cat']}\n")
+                self._json({"ok":True,"skill":skill["id"],"path":dest})
+            except Exception as e: self._json({"error":str(e)},500)
+        else: self._json({"error":"not found"},404)
+
+    def _html(self,h,code=200):
+        b=h.encode("utf-8");self.send_response(code)
+        self.send_header("Content-Type","text/html; charset=utf-8")
+        self.send_header("Content-Length",str(len(b)));self.end_headers();self.wfile.write(b)
+    def _json(self,d,code=200):
+        b=json.dumps(d,default=str).encode();self.send_response(code)
+        self.send_header("Content-Type","application/json")
+        self.send_header("Access-Control-Allow-Origin","*")
+        self.send_header("Content-Length",str(len(b)));self.end_headers();self.wfile.write(b)
+    def log_message(self,*a): pass
 
 if __name__=="__main__":
-    s=http.server.HTTPServer(("0.0.0.0",PORT),H)
-    print(f"Skills Marketplace v2 on port {PORT}")
+    s=http.server.HTTPServer(("0.0.0.0",PORT),Handler)
+    print(f"Skills Marketplace v{VERSION} on :{PORT}")
     s.serve_forever()
