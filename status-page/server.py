@@ -1,105 +1,114 @@
 #!/usr/bin/env python3
-import http.client, json, os, ssl, sys, time
-from datetime import datetime, timezone
-from urllib.parse import urlparse
+"""Poke Labs Status Page — Public service status dashboard. Port 8740."""
+import http.server, json, subprocess, os, socketserver, urllib.parse, datetime, re
 
-SERVICES = [
-    {"name": "pokelabs.org", "url": "https://pokelabs.org", "desc": "Main website"},
-    {"name": "ai-council", "url": "https://ai-council.pokelabs.com", "desc": "AI Council"},
-    {"name": "link-preview", "url": "http://localhost:8765/api/health", "desc": "Link Preview API", "internal": True},
-    {"name": "uptime-monitor", "url": "http://localhost:8766/api/health", "desc": "Uptime Monitor", "internal": True},
-]
-PORT = int(os.environ.get("STATUS_PORT", 8767))
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-HISTORY_FILE = os.path.join(DATA_DIR, "status_history.json")
-os.makedirs(DATA_DIR, exist_ok=True)
+PORT = 8740
+SERVICES_DIR = "/home/alx/services"
+ENTRY_FILES = ["server.py", "bot.py", "app.py", "main.py", "index.js"]
 
-def check_one(svc):
-    url = svc["url"]
-    parsed = urlparse(url)
-    is_https = parsed.scheme == "https"
-    host = parsed.hostname
-    port = parsed.port or (443 if is_https else 80)
-    path = parsed.path or "/"
-    start = time.time()
-    try:
-        if is_https:
-            ctx = ssl.create_default_context()
-            conn = http.client.HTTPSConnection(host, port, timeout=10, context=ctx)
-        else:
-            conn = http.client.HTTPConnection(host, port, timeout=10)
-        conn.request("GET", path, headers={"User-Agent": "PokeLabs-Status/1.0"})
-        resp = conn.getresponse()
-        status = resp.status
-        body = resp.read(512).decode("utf-8", errors="ignore")
-        conn.close()
-        ms = round((time.time() - start) * 1000)
-        is_up = 200 <= status < 500
-        if svc.get("internal") and "health" in path:
-            try:
-                j = json.loads(body)
-                is_up = j.get("status") == "ok"
-            except: pass
-        return {"name": svc["name"], "status": status, "ms": ms, "up": is_up, "desc": svc["desc"]}
-    except Exception as e:
-        return {"name": svc["name"], "status": None, "ms": round((time.time()-start)*1000), "up": False, "desc": svc["desc"], "error": str(e)}
+def discover():
+    svcs = []
+    if not os.path.isdir(SERVICES_DIR): return svcs
+    for name in sorted(os.listdir(SERVICES_DIR)):
+        sdir = os.path.join(SERVICES_DIR, name)
+        if not os.path.isdir(sdir): continue
+        for entry in ENTRY_FILES:
+            if os.path.isfile(os.path.join(sdir, entry)):
+                port = None
+                try:
+                    with open(os.path.join(sdir, entry)) as f:
+                        for line in f:
+                            m = re.search(r'PORT\s*=\s*(\d{4,5})', line)
+                            if m: port = int(m.group(1)); break
+                except: pass
+                running = False
+                if port:
+                    try:
+                        r = subprocess.run(["fuser", f"{port}/tcp"], capture_output=True, timeout=2)
+                        if r.returncode == 0 and r.stdout.strip(): running = True
+                    except: pass
+                svcs.append({"name": name, "port": port, "running": running})
+                break
+    return svcs
 
-def run_checks():
-    results = [check_one(s) for s in SERVICES]
-    public = [r for r in results if not any(s.get("internal") for s in SERVICES if s["name"] == r["name"])]
-    if all(r["up"] for r in public): overall = "operational"
-    elif any(r["up"] for r in public): overall = "degraded"
-    else: overall = "down"
-    report = {"overall": overall, "time": datetime.now(timezone.utc).isoformat(), "services": results}
-    history = []
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE) as f: history = json.load(f)
-        except: pass
-    history.append(report)
-    with open(HISTORY_FILE, "w") as f: json.dump(history[-100:], f, indent=2)
-    return report
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        p = urllib.parse.urlparse(self.path).path
+        if p == "/api/status": self.send_json({"ts": datetime.datetime.utcnow().isoformat(), "services": self.check_all()})
+        elif p == "/": self.send_html(PAGE)
+        else: self.send_json({"error": "not found"}, 404)
 
-def run_server():
-    from http.server import HTTPServer, BaseHTTPRequestHandler
-    class H(BaseHTTPRequestHandler):
-        def do_GET(self):
-            if self.path in ("/api/status", "/api/check"):
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(run_checks(), indent=2).encode())
-            elif self.path == "/api/health":
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"status":"ok"}')
-            elif self.path == "/":
-                r = run_checks()
-                colors = {"operational": "#22c55e", "degraded": "#f59e0b", "down": "#ef4444"}
-                c = colors.get(r["overall"], "#6b7280")
-                rows = ""
-                for s in r["services"]:
-                    sc = "#22c55e" if s["up"] else "#ef4444"
-                    st = s["status"] if s["status"] else "ERR"
-                    rows += f'<tr><td>{s["name"]}</td><td>{s["desc"]}</td><td style="color:{sc}">{st}</td><td>{s["ms"]}ms</td></tr>'
-                html = f'<!DOCTYPE html><html><head><title>Poke Labs Status</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px}h1{{color:#111}}.status{{display:inline-block;padding:4px 12px;border-radius:20px;color:#fff;background:{c};font-weight:600}}table{{width:100%;border-collapse:collapse;margin-top:20px}}th,td{{text-align:left;padding:8px 12px;border-bottom:1px solid #eee}}th{{color:#666;font-size:12px;text-transform:uppercase}}</style></head><body><h1>Poke Labs Status</h1><span class="status">{r["overall"]}</span><p style="color:#999;font-size:12px">Updated: {r["time"]}</p><table><tr><th>Service</th><th>Description</th><th>Status</th><th>Latency</th></tr>{rows}</table></body></html>'
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html")
-                self.end_headers()
-                self.wfile.write(html.encode())
-            else:
-                self.send_response(404); self.end_headers()
-        def log_message(self, *a): pass
-    HTTPServer(("0.0.0.0", PORT), H).serve_forever()
+    def check_all(self):
+        svcs = discover()
+        total = len(svcs)
+        up = sum(1 for s in svcs if s["running"])
+        return {"total": total, "up": up, "down": total - up, "uptime_pct": round(100*up/total) if total else 0, "services": svcs}
 
-if __name__ == "__main__":
-    mode = sys.argv[1] if len(sys.argv) > 1 else "check"
-    if mode == "check":
-        for s in SERVICES:
-            r = check_one(s)
-            print(f"{'OK' if r['up'] else 'FAIL'} | {r['name']} | {r.get('status','ERR')} | {r['ms']}ms")
-    elif mode == "json":
-        print(json.dumps(run_checks(), indent=2))
-    elif mode == "server":
-        run_server()
+    def send_json(self, d, c=200):
+        b = json.dumps(d, default=str).encode()
+        self.send_response(c); self.send_header("Content-Type","application/json")
+        self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
+
+    def send_html(self, h):
+        b = h.encode()
+        self.send_response(200); self.send_header("Content-Type","text/html; charset=utf-8")
+        self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
+    def log_message(self,*a): pass
+
+PAGE = """<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Poke Labs Status</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a1a;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+.header{text-align:center;margin-bottom:32px}
+h1{font-size:2.2em;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#666;margin-top:8px}
+.stats{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;justify-content:center}
+.stat{background:#16162a;border:1px solid #2a2a4a;border-radius:12px;padding:20px 28px;text-align:center;min-width:120px}
+.stat .v{font-size:2em;font-weight:700}
+.stat .l{font-size:.75em;color:#666;text-transform:uppercase;margin-top:4px}
+.ok{color:#34d399}.warn{color:#fbbf24}.err{color:#f87171}
+.bar{height:8px;background:#1a1a3a;border-radius:4px;overflow:hidden;margin-bottom:32px;width:100%;max-width:600px}
+.bar-fill{height:100%;background:linear-gradient(90deg,#34d399,#60a5fa);border-radius:4px;transition:width 1s}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;width:100%;max-width:800px}
+.s{background:#12122a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:.9em}
+.d{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.d.up{background:#34d399;box-shadow:0 0 6px #34d399}.d.down{background:#f87171;box-shadow:0 0 6px #f87171}
+.sn{flex:1}.pt{color:#555;font-size:.8em;font-family:mono}
+footer{margin-top:40px;color:#444;font-size:.8em}
+</style></head><body>
+<div class="header"><h1>🫧 Poke Labs</h1><p class="sub">Service Status Dashboard</p></div>
+<div class="stats" id="stats"></div>
+<div class="bar"><div class="bar-fill" id="bar" style="width:0%"></div></div>
+<div class="grid" id="grid"></div>
+<footer>Powered by Poke Labs · Open Source · <a href="https://github.com/pokelabshq/services" style="color:#60a5fa">GitHub</a></footer>
+<script>
+(async function(){
+  try{
+    const d=await(await fetch('/api/status')).json();
+    const s=d.services;
+    const up=s.filter(x=>x.running).length;
+    const down=s.length-up;
+    const pct=d.uptime_pct;
+    document.getElementById('stats').innerHTML=`
+      <div class="stat"><div class="v">${s.length}</div><div class="l">Total</div></div>
+      <div class="stat"><div class="v ok">${up}</div><div class="l">Operational</div></div>
+      <div class="stat"><div class="v ${down?'err':'ok'}">${down}</div><div class="l">Down</div></div>
+      <div class="stat"><div class="v ${pct>90?'ok':pct>50?'warn':'err'}">${pct}%</div><div class="l">Uptime</div></div>
+    `;
+    document.getElementById('bar').style.width=pct+'%';
+    document.getElementById('grid').innerHTML=s.map(x=>`
+      <div class="s"><div class="d ${x.running?'up':'down'}"></div>
+      <div class="sn">${x.name}</div>
+      ${x.port?'<div class="pt">:'+x.port+'</div>':''}</div>
+    `).join('');
+  }catch(e){document.getElementById('stats').innerHTML='<p class="err">Failed to load status</p>'}
+})();
+setInterval(()=>location.reload(),30000);
+</script></body></html>"""
+
+class R(socketserver.TCPServer): allow_reuse_address=True
+
+if __name__=="__main__":
+    print(f"📊 Poke Status Page on port {PORT}")
+    R(("",PORT),H).serve_forever()
