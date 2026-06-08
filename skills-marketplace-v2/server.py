@@ -109,7 +109,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 body=json.loads(self.rfile.read(int(self.headers.get("Content-Length",0))))
                 sid=body.get("id","")
-                skill=next((s for s in SKILLS if s["id"]),None)
+                skill=next((s for s in SKILLS if s["id"]==sid),None)
                 if not skill: self._json({"error":"skill not found"},404);return
                 dest=os.path.join("/home/alx/skills",skill["id"])
                 os.makedirs(dest,exist_ok=True)

@@ -1,77 +1,115 @@
-# 🐾 Poke Labs Services
-
-**52 open-source microservices — Python stdlib, zero dependencies. MIT licensed.**
+# 🏗️ Poke Labs Services
+*69 microservices, all Python stdlib, zero external dependencies.*
 
 ## Quick Start
-
 ```bash
-# Start ALL services at once
-bash /home/alx/deploy-all.sh start
+# Start all services
+bash deploy-all.sh start
 
-# Check status
-bash /home/alx/deploy-all.sh status
+# Start individual service
+cd <service-name> && nohup python3 server.py > /tmp/<name>.log 2>&1 &
 
-# Stop everything
-bash /home/alx/deploy-all.sh stop
-
-# Monitor health
-curl -s http://localhost:8799/api/status | python3 -m json.tool
+# Check health
+curl http://localhost:<port>/api/health
 ```
 
 ## Service Catalog
 
-### Core Services
+### 🌐 Web & APIs
+| Service | Port | Description | Revenue |
+|---------|------|-------------|---------|
+| pokelabs-site | 8766 | Landing page + dashboard | — |
+| link-preview | 8765 | URL metadata extraction | x402 (3 free/day) |
+| pocket | 8767 | Knowledge base API | — |
+| skills-marketplace-v2 | 8781 | Skill discovery & install | Premium skills |
+| webhook-dashboard | 8771 | Real-time webhook viewer | — |
+| qr-api | 8768 | QR code generation | — |
+| shortener | 8769 | URL shortening | — |
+| color-api | 8772 | Color manipulation | — |
+| json2ts | 8773 | JSON to TypeScript | — |
+| hash-gen | 8774 | Hash generation | — |
+| uuid-gen | 8776 | UUID generation | — |
+| timestamp-conv | 8778 | Timestamp conversion | — |
+| graphql-gateway | 8783 | GraphQL gateway | — |
+| api-gateway | 8784 | API gateway | — |
+
+### 🤖 GitHub Bots
 | Service | Port | Description |
 |---------|------|-------------|
-| Poke Hub | 8775 | All-in-one GitHub bot (reply, triage, stale close) |
-| Skills Marketplace v2 | 8781 | Browse, search, install skills with UI |
-| Poke Labs Site v7 | 8766 | Landing page + dashboard |
-| Link Preview API v4 | 8765 | URL metadata extraction with x402 |
-| Health Aggregator v1 | 8799 | Unified monitoring dashboard |
+| poke-hub | 8775 | All-in-one bot (reply+stale+label+dash) |
+| github-reply-bot | 8775 | Context-aware issue/PR auto-replies |
+| poke-bot | 8770 | Auto-triage with priority labeling |
+| telegram-bot | 8777 | Telegram integration |
 
-### GitHub Services
+### 📊 Monitoring & Ops
 | Service | Port | Description |
 |---------|------|-------------|
-| Poke Bot | 8770 | Auto-triage (P0-P3 labels, S/XL PR sizes) |
-| Auto-merge PR | — | GitHub Action: auto-squash-merge Dependabot (patch only) |
+| health-aggregator | 8799 | Aggregate health checks |
+| metrics-exporter | 8790 | Prometheus /metrics |
+| status-page | 8791 | Service status dashboard |
+| uptime-monitor | 8792 | Uptime checking |
+| deploy-manager | 8798 | Fleet management |
+| meta-registry | 8785 | Service discovery |
 
-### Communication
+### 💰 Payments
 | Service | Port | Description |
 |---------|------|-------------|
-| Telegram Bot | 8777 | Telegram integration |
-| Council Digest | 8776 | Daily/weekly repo digest |
+| x402-gateway | 8795 | USDC micropayment acceptance |
+| pricing-api | 8793 | Pricing API |
+| billing | 8794 | Billing service |
 
-### Infrastructure
+### 🧠 AI & Text
 | Service | Port | Description |
 |---------|------|-------------|
-| Registry | 8785 | Agent registry |
-| Skills Hub | 8780 | Skills directory |
-| Billing | 8795 | Billing service |
-| Pricing | 8790 | Pricing API |
+| keyword-api | 8786 | Keyword extraction |
+| sentiment | 8787 | Sentiment analysis |
+| summarize | 8788 | Text summarization |
 
-## API Standards
+### 🔧 Automation
+| Service | Description |
+|---------|-------------|
+| council | AI Council digest (stale issues, deps, CI) |
+| daily-briefing | Morning briefing generator |
+| changelog-gen | Changelog generation |
+| release-tracker | Release tracking |
+| milestone-tracker | Milestone tracking |
+| repo-monitor | Repository monitoring |
+| auto-merge | Dependabot PR auto-merge workflow |
 
-All services expose `GET /api/health` returning `{"ok": true, "v": N, "port": N}`.
+### 🔌 Infrastructure
+| Service | Description |
+|---------|-------------|
+| poke-cli | Unified CLI for all services |
+| gateway | Gateway service |
+| poke-gateway | Poke gateway |
+| webhook-relay | Webhook relay |
+| notify-hub | Notification hub |
+| paywall-proxy | Paywall proxy |
+| a2a-marketplace | Agent-to-agent marketplace |
+| skills-index | Skills index |
+| poke-feed | Activity feed |
+| dns-checker | DNS checking |
+| analytics | Analytics service |
+| landing | Landing page |
+| portal | Portal |
+| registry | Registry |
+| cli | CLI tools |
 
-## Health Aggregator (Port 8799)
+## Architecture
+- All services are Python stdlib only — no pip install needed
+- Each service is a single `server.py` file
+- Health check endpoint at `/api/health` on every service
+- JSON API with CORS enabled
+- Web dashboard at `/` on most services
 
-Scans all known service ports via TCP + HTTP health probes:
-- `GET /api/status` → Full status JSON
-- `GET /` → Visual dashboard with uptime %, per-service status
-
-## To Deploy After Funding
-
-```bash
-# 1. Fund wallet: 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF (Base)
-# 2. Buy Conway credits → $25 tier
-# 3. Deploy: bash /home/alx/deploy-all.sh start
-# 4. Expose ports: 8765 8766 8775 8781 8799
-```
+## Revenue Model
+1. **Link Preview API**: 3 free requests/day per IP, then x402 USDC payment
+2. **Skills Marketplace**: Free skills + premium paid skills via x402
+3. **Poke Hub Bot**: Managed service for OSS projects
+4. **Council Digest**: Weekly paid reports for organizations
 
 ## Wallet
-
 `0xca3d86e4EDE205E6d72496BC2919c88b994B6beF` (Base chain)
 
 ## License
-
-MIT — Poke Labs © 2026. Built by Alexander Wondwossen.
+MIT — Poke Labs, 2026
