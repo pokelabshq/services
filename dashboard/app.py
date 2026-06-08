@@ -33,7 +33,7 @@ def scan_all():
                 if pm: port = int(pm.group(1))
         else:
             tags.append("skill")
-        services.append({"name":name,"desc":desc or f"{name} service","port":port,"tags":tags,"status":"unknown"})
+        services.append({"name":name,"desc":desc or f"{name} service","port":port,"tags":tags})
     return services
 
 def check_port(port):
@@ -85,8 +85,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0
 .card h3{font-size:.95rem;color:#e0e0e0;margin-bottom:.2rem;display:flex;align-items:center;gap:.4rem}
 .card h3 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .card h3 .dot.up{background:#00ff88;box-shadow:0 0 6px #00ff8866}
-.card h3 .dot.down{background:#ff4444}
-.card h3 .dot.unknown{background:#555}
+.card h3 .dot.down{background:#ff4444}..card h3 .dot.unknown{background:#555}
 .card p{color:#666;font-size:.8rem;line-height:1.4;margin-bottom:.5rem}
 .card .meta{display:flex;justify-content:space-between;align-items:center}
 .card .port{color:#444;font-size:.75rem;font-family:monospace}
@@ -176,7 +175,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             for s in svcs:
                 st=check_port(s["port"]) if s["port"] else "unknown"
                 s["status"]=st
-                results.append({"name":s["name"],"status":st})
+                results.append({"name":s.name,"status":st})
             self.send_response(200);self.send_header("Content-Type","application/json");self.end_headers();self.wfile.write(json.dumps(results).encode())
         elif p=="/api/health":
             self.send_response(200);self.send_header("Content-Type","application/json");self.end_headers();self.wfile.write(json.dumps({"ok":True,"v":3}).encode())

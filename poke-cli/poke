@@ -1,152 +1,175 @@
 #!/usr/bin/env python3
-"""Poke CLI v1 — Manage Poke Labs services from the terminal.
+"""Poke CLI v1 — Command-line interface for Poke Labs services.
 Usage: poke <command> [args]
-Commands: status, start, stop, restart, logs, health, version
-Zero deps, stdlib only."""
+Commands: status, start, stop, restart, logs, health, skills, uptime, version"""
 
-import sys, os, subprocess, json, socket, time
+import sys, os, json, subprocess, signal
+from datetime import datetime, timezone
 
 VERSION = "1.0.0"
 SERVICES = {
-    "site":      {"name": "Poke Labs Site",   "port": 8766, "file": "pokelabs-site/server.py"},
-    "preview":   {"name": "Link Preview API",  "port": 8765, "file": "link-preview/server.py"},
-    "bot":       {"name": "Poke Bot",          "port": 8770, "file": "poke-bot/bot.py"},
-    "telegram":  {"name": "Telegram Bot",      "port": 8777, "file": "telegram-bot/bot.py"},
-    "skills":    {"name": "Skills Hub",        "port": 8780, "file": "skills-hub/server.py"},
-    "registry":  {"name": "Package Registry",  "port": 8785, "file": "registry/server.py"},
-    "pricing":   {"name": "Pricing API",       "port": 8790, "file": "pricing/server.py"},
-    "billing":   {"name": "Billing Engine",    "port": 8795, "file": "billing/server.py"},
-    "dashboard": {"name": "Health Dashboard",  "port": 8799, "file": "health-dashboard/server.py"},
+    "link-preview": {"port": 8765, "file": "/home/alx/services/link-preview/server.py", "desc": "Link Preview API"},
+    "poke-bot":     {"port": 8770, "file": "/home/alx/services/poke-bot/bot.py", "desc": "GitHub Auto-Triage Bot"},
+    "site":         {"port": 8766, "file": "/home/alx/services/pokelabs-site/server.py", "desc": "Poke Labs Site"},
+    "telegram":     {"port": 8777, "file": "/home/alx/services/telegram-bot/bot.py", "desc": "Telegram Bot"},
+    "marketplace":  {"port": 8780, "file": "/home/alx/services/skills-marketplace/server.py", "desc": "Skills Marketplace"},
+    "dashboard":    {"port": 8799, "file": "/home/alx/services/health-dashboard/server.py", "desc": "Health Dashboard"},
 }
-BASE = "/home/alx/services"
-LOGDIR = "/tmp"
 
-def port_in_use(port):
+def get_pid(port):
     try:
-        s = socket.socket(); s.settimeout(1)
-        s.connect(("127.0.0.1", port)); s.close(); return True
-    except: return False
+        r = subprocess.run(["fuser", "-n", "tcp", str(port)], capture_output=True, text=True, timeout=3)
+        pids = [int(p) for p in r.stdout.strip().split() if p.strip().isdigit()]
+        return pids[0] if pids else None
+    except:
+        return None
 
-def pid_file(svc): return f"/tmp/poke-{svc}.pid"
+def service_status(name):
+    if name == "all":
+        return [(s, get_pid(info["port"])) for s, info in SERVICES.items()]
+    return [(name, get_pid(SERVICES[name]["port"]))]
 
-def get_pid(svc):
-    pf = pid_file(svc)
-    if os.path.exists(pf):
-        try:
-            pid = int(open(pf).read().strip())
-            os.kill(pid, 0); return pid
-        except: os.unlink(pf)
-    return None
+def start_service(name):
+    info = SERVICES[name]
+    pid = get_pid(info["port"])
+    if pid:
+        return f"⚠️  {name} already running (PID {pid})"
+    if not os.path.exists(info["file"]):
+        return f"❌ {name} script not found: {info['file']}"
+    log = f"/tmp/{name}.log"
+    subprocess.Popen(
+        ["nohup", "python3", info["file"], ">", log, "2", "&"],
+        shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    return f"🚀 Started {name} (port {info['port']})"
 
-def cmd_status(args):
-    print(f"\n{'SERVICE':<22} {'PORT':<8} {'STATUS':<10} {'PID'}")
-    print("─" * 55)
-    for key, svc in SERVICES.items():
-        pid = get_pid(key)
-        if pid:
-            status, detail = "running", str(pid)
-        elif port_in_use(svc["port"]):
-            status, detail = "listening", "?"
-        else:
-            status, detail = "stopped", "—"
-        print(f"{svc['name']:<22} {svc['port']:<8} {status:<10} {detail}")
-    print()
+def stop_service(name):
+    pid = get_pid(SERVICES[name]["port"])
+    if not pid:
+        return f"⚠️  {name} not running"
+    os.kill(pid, signal.SIGTERM)
+    return f"🛑 Stopped {name} (PID {pid})"
 
-def cmd_health(args):
+def run_health():
     import urllib.request
-    for key, svc in SERVICES.items():
-        pid = get_pid(key)
-        if not pid:
-            print(f"  {svc['name']}: STOPPED")
-            continue
+    results = []
+    up = down = 0
+    for name, info in SERVICES.items():
+        port = info["port"]
         try:
-            url = f"http://localhost:{svc['port']}/api/health"
-            req = urllib.request.Request(url, headers={"User-Agent": "poke-cli/1"})
-            resp = urllib.request.urlopen(req, timeout=3)
-            data = json.loads(resp.read())
-            ver = data.get("v", "?")
-            print(f"  {svc['name']}: OK (v{ver})")
+            req = urllib.request.Request(f"http://localhost:{port}/api/health", headers={"User-Agent": "poke-cli/1"})
+            with urllib.request.urlopen(req, timeout=3) as r:
+                data = json.loads(r.read())
+                results.append(f"  ✅ {name}:{port} — {data.get('service', 'ok')} v{data.get('v', '?')}")
+                up += 1
         except:
-            print(f"  {svc['name']}: UNREACHABLE (pid {pid})")
+            try:
+                req = urllib.request.Request(f"http://localhost:{port}/", headers={"User-Agent": "poke-cli/1"})
+                with urllib.request.urlopen(req, timeout=3) as r:
+                    results.append(f"  ✅ {name}:{port} — running (no health endpoint)")
+                    up += 1
+            except:
+                results.append(f"  ❌ {name}:{port} — down")
+                down += 1
+    return "\n".join(results) + f"\n\n{up} up, {down} down"
 
-def cmd_start(args):
-    if not args:
-        print("Usage: poke start <service>|all"); return
-    targets = list(SERVICES.keys()) if args[0] == "all" else args
-    for key in targets:
-        if key not in SERVICES:
-            print(f"  Unknown service: {key}"); continue
-        svc = SERVICES[key]
-        if get_pid(key) or port_in_use(svc["port"]):
-            print(f"  {svc['name']} already running"); continue
-        fpath = os.path.join(BASE, svc["file"])
-        if not os.path.exists(fpath):
-            print(f"  {svc['name']}: file not found ({fpath})"); continue
-        log = open(f"{LOGDIR}/poke-{key}.log", "a")
-        proc = subprocess.Popen(
-            ["python3", fpath],
-            stdout=log, stderr=log,
-            cwd=os.path.dirname(fpath),
-        )
-        open(pid_file(key), "w").write(str(proc.pid))
-        print(f"  Started {svc['name']} (pid {proc.pid})")
-
-def cmd_stop(args):
-    if not args:
-        print("Usage: poke stop <service>|all"); return
-    targets = list(SERVICES.keys()) if args[0] == "all" else args
-    for key in targets:
-        pid = get_pid(key)
-        if not pid:
-            print(f"  {SERVICES[key]['name']} not running"); continue
-        try:
-            os.kill(pid, 15)
-            os.unlink(pid_file(key))
-            print(f"  Stopped {SERVICES[key]['name']} (pid {pid})")
-        except ProcessLookupError:
-            os.unlink(pid_file(key))
-            print(f"  {SERVICES[key]['name']} was already dead")
-
-def cmd_restart(args):
-    cmd_stop(args)
-    time.sleep(1)
-    cmd_start(args)
-
-def cmd_logs(args):
-    key = args[0] if args else "site"
-    if key not in SERVICES:
-        print(f"Unknown: {key}"); return
-    logpath = f"{LOGDIR}/poke-{key}.log"
-    if os.path.exists(logpath):
-        lines = open(logpath).readlines()
-        for line in lines[-20:]:
-            print(line, end="")
-    else:
-        print(f"No log file for {key}")
-
-def cmd_version(args):
-    print(f"Poke CLI v{VERSION}")
-    print(f"Services: {len(SERVICES)}")
-    print(f"Base: {BASE}")
-
-COMMANDS = {
-    "status": cmd_status, "health": cmd_health,
-    "start": cmd_start, "stop": cmd_stop,
-    "restart": cmd_restart, "logs": cmd_logs,
-    "version": cmd_version,
-}
+def run_uptime():
+    checker = "/home/alx/services/uptime-checker/check.py"
+    if os.path.exists(checker):
+        r = subprocess.run(["python3", checker], capture_output=True, text=True, timeout=15)
+        return r.stdout
+    return "Uptime checker not found"
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
-        print("Poke CLI — Poke Labs Service Manager")
-        print("Usage: poke <command> [args]")
-        print("Commands:", ", ".join(COMMANDS.keys()))
+    args = sys.argv[1:]
+    if not args:
+        print(__doc__)
+        print(f"Commands: {', '.join(['status','start','stop','restart','health','uptime','skills','version'])}")
         return
-    cmd = sys.argv[1]
-    if cmd in COMMANDS:
-        COMMANDS[cmd](sys.argv[2:])
+
+    cmd = args[0]
+
+    if cmd == "version":
+        print(f"Poke CLI v{VERSION}")
+        print(f"🐾 Poke Labs — pokelabs.org")
+
+    elif cmd == "status":
+        name = args[1] if len(args) > 1 else "all"
+        if name not in SERVICES and name != "all":
+            print(f"Unknown service: {name}")
+            print(f"Available: {', '.join(SERVICES.keys())}")
+            return
+        results = service_status(name)
+        for svc, pid in results:
+            status = f"✅ running (PID {pid})" if pid else "❌ down"
+            port = SERVICES[svc]["port"]
+            print(f"  {svc}:{port} — {status}")
+
+    elif cmd == "start":
+        name = args[1] if len(args) > 1 else "all"
+        targets = list(SERVICES.keys()) if name == "all" else [name]
+        for t in targets:
+            if t in SERVICES:
+                print(start_service(t))
+            else:
+                print(f"Unknown: {t}")
+
+    elif cmd == "stop":
+        name = args[1] if len(args) > 1 else "all"
+        targets = list(SERVICES.keys()) if name == "all" else [name]
+        for t in targets:
+            if t in SERVICES:
+                print(stop_service(t))
+            else:
+                print(f"Unknown: {t}")
+
+    elif cmd == "restart":
+        name = args[1] if len(args) > 1 else "all"
+        targets = list(SERVICES.keys()) if name == "all" else [name]
+        for t in targets:
+            if t in SERVICES:
+                print(stop_service(t))
+                import time; time.sleep(1)
+                print(start_service(t))
+
+    elif cmd == "health":
+        print("🏥 Health Check")
+        print(run_health())
+
+    elif cmd == "uptime":
+        print(run_uptime())
+
+    elif cmd == "skills":
+        print("🐾 Poke Skills Marketplace")
+        print("  Skills available:")
+        mkt_svc = "marketplace"
+        mkt_port = SERVICES.get("marketplace", {}).get("port", 8780)
+        try:
+            import urllib.request
+            req = urllib.request.Request(f"http://localhost:{mkt_port}/api/skills")
+            with urllib.request.urlopen(req, timeout=5) as r:
+                data = json.loads(r.read())
+                for s in data.get("skills", []):
+                    port = f":{s.get('port','')}" if s.get('port') else ""
+                    print(f"  • {s['name']}{port} — {s['description'][:60]}...")
+        except:
+            print("  Marketplace not running. Start with: poke start marketplace")
+
+    elif cmd == "logs":
+        name = args[1] if len(args) > 1 else ""
+        if not name or name not in SERVICES:
+            print("Usage: poke logs <service>")
+            return
+        log = f"/tmp/{name}.log"
+        if os.path.exists(log):
+            r = subprocess.run(["tail", "-30", log], capture_output=True, text=True)
+            print(r.stdout)
+        else:
+            print(f"No log file for {name}")
+
     else:
-        print(f"Unknown command: {cmd}. Run 'poke help'.")
+        print(f"Unknown command: {cmd}")
+        print("Commands: status, start, stop, restart, health, uptime, skills, logs, version")
 
 if __name__ == "__main__":
     main()

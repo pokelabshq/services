@@ -1,87 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Poke Labs — Services Directory</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poke Labs — Services</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;line-height:1.6}
-header{padding:2rem;text-align:center;background:linear-gradient(180deg,#1a1a2e,#0a0a0f)}
-h1{font-size:2.5rem;background:linear-gradient(90deg,#8b5cf6,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sub{color:#9ca3af;margin-top:.5rem}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:3rem 2rem;text-align:center;border-bottom:1px solid #1e293b}
+header h1{font-size:2.5rem;margin-bottom:.5rem;background:linear-gradient(90deg,#60a5fa,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header p{color:#94a3b8;font-size:1.1rem}
 .container{max-width:900px;margin:0 auto;padding:2rem}
-h2{color:#8b5cf6;margin:2rem 0 1rem;font-size:1.3rem}
-.svc{background:#12121a;border:1px solid #2a2a4a;border-radius:12px;padding:1.5rem;margin-bottom:1rem}
-.svc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
-.svc h3{color:#a78bfa}
-.svc p{color:#9ca3af;font-size:.9rem;margin-bottom:.1rem}
-.svc .free{color:#22c55e;font-size:.85rem}
-.svc .paid{color:#eab308;font-size:.85rem}
-.endpoint{background:#0d0d15;border:1px solid #2a2a4a;border-radius:6px;padding:.8rem;margin:.5rem 0;font-family:monospace;font-size:.85rem;color:#a78bfa;overflow-x:auto}
-.method{color:#22c55e;font-weight:bold}
-.back{display:inline-block;margin-bottom:1rem;color:#8b5cf6;text-decoration:none}
+h2{font-size:1.3rem;margin:2rem 0 1rem;color:#cbd5e1}
+.service-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1rem}
+.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1.5rem;transition:border-color .2s}
+.card:hover{border-color:#60a5fa}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.card h3{font-size:1.1rem;color:#f1f5f9}
+.card p{color:#94a3b8;font-size:.9rem;margin-bottom:1rem;line-height:1.5}
+.badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .75rem;border-radius:9999px;font-size:.75rem;font-weight:600}
+.badge.up{background:#064e3b;color:#6ee7b7}
+.badge.down{background:#7f1d1d;color:#fca5a5}
+.links{display:flex;gap:.5rem;flex-wrap:wrap}
+.links a{display:inline-block;padding:.35rem .75rem;border-radius:6px;font-size:.8rem;text-decoration:none;font-weight:500;transition:background .2s}
+.btn-demo{background:#1e40af;color:#bfdbfe}
+.btn-demo:hover{background:#1e3a8a}
+.btn-api{background:#065f46;color:#a7f3d0}
+.btn-api:hover{background:#064e3b}
+.btn-src{background:#374151;color:#d1d5db}
+.btn-src:hover{background:#4b5563}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.up{background:#34d399;box-shadow:0 0 6px #34d399}
+.dot.down{background:#f87171}
+footer{text-align:center;padding:2rem;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:3rem}
 </style>
 </head>
 <body>
 <header>
-<h1>🦾 Poke Labs Services</h1>
-<p class="sub">All services are open source, self-funded, and pay-per-use via x402</p>
+  <h1>🐾 Poke Labs</h1>
+  <p>Open-source AI agent infrastructure &mdash; MIT licensed</p>
 </header>
 <div class="container">
-<a href="/" class="back">← Back to home</a>
+<h2>🚀 Services</h2>
+<div class="service-grid">
 
-<h2>🔗 Link Preview API</h2>
-<div class="svc">
-<div class="svc-header"><h3>Extract metadata from any URL</h3><span class="free">3 free/day</span></div>
-<p>Title, description, image, site name, favicon — from any public URL.</p>
-<div class="endpoint"><span class="method">POST</span> /api/preview — Body: {"url": "https://example.com"}</div>
-<div class="endpoint"><span class="method">GET</span> /api/preview?url=https://example.com</div>
-<div class="endpoint"><span class="method">GET</span> /api/health — Health check</div>
-<p class="paid" style="margin-top:.5rem">After 3 free calls: x402 payment (~$0.005/request)</p>
+<div class="card">
+  <div class="card-header">
+    <h3>Poke Labs Site</h3>
+    <span class="badge down" id="badge-site"><span class="dot down"></span><span>offline</span></span>
+  </div>
+  <p>Landing page, dashboard, and link preview API. The main face of Poke Labs.</p>
+  <div class="links">
+    <a href="https://pokelabs.org" class="btn-demo">Demo</a>
+    <a href="https://pokelabs.org/api/health" class="btn-api">API</a>
+    <a href="https://github.com/pokelabshq/services" class="btn-src">Source</a>
+  </div>
 </div>
 
-<h2>📦 URL Shortener</h2>
-<div class="svc">
-<div class="svc-header"><h3>Short URLs with click tracking</h3><span class="free">Free</span></div>
-<p>Create short URLs, track clicks, set custom slugs. Stdlib-only Python.</p>
-<div class="endpoint"><span class="method">POST</span> /api/shorten — Body: {"url": "https://...", "slug": "optional"}</div>
-<div class="endpoint"><span class="method">GET</span> /:slug — Redirect to original URL</div>
-<div class="endpoint"><span class="method">GET</span> /api/stats/:slug — Click stats</div>
+<div class="card">
+  <div class="card-header">
+    <h3>Link Preview API</h3>
+    <span class="badge down" id="badge-preview"><span class="dot down"></span><span>offline</span></span>
+  </div>
+  <p>Extract title, description, and image from any URL. 3 free/day, unlimited via x402 USDC.</p>
+  <div class="links">
+    <a href="https://pokelabs.org/api/preview" class="btn-demo">Demo</a>
+    <a href="https://pokelabs.org/api/health" class="btn-api">Health</a>
+    <a href="https://github.com/pokelabshq/services" class="btn-src">Source</a>
+  </div>
 </div>
 
-<h2>🔒 Paywall Proxy</h2>
-<div class="svc">
-<div class="svc-header"><h3>Add x402 payments to any API</h3><span class="paid">Beta</span></div>
-<p>Drop-in proxy that adds Web Monetization via x402 to your existing endpoints.</p>
-<div class="endpoint"><span class="method">ANY</span> /proxy?upstream=https://your-api.com/endpoint</div>
+<div class="card">
+  <div class="card-header">
+    <h3>Poke Bot</h3>
+    <span class="badge down" id="badge-bot"><span class="dot down"></span><span>offline</span></span>
+  </div>
+  <p>GitHub webhook handler that auto-labels issues and PRs with priority and size.</p>
+  <div class="links">
+    <a href="https://github.com/pokelabshq/council" class="btn-demo">Demo</a>
+    <a href="https://github.com/pokelabshq/services" class="btn-src">Source</a>
+  </div>
 </div>
 
-<h2>📊 Daily Briefing</h2>
-<div class="svc">
-<div class="svc-header"><h3>Morning reports via Telegram</h3><span class="free">Free</span></div>
-<p>Service uptime, GitHub activity, open issues, recent commits — every morning.</p>
-<div class="endpoint">Configure: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID</div>
+<div class="card">
+  <div class="card-header">
+    <h3>Telegram Bot</h3>
+    <span class="badge down" id="badge-telegram"><span class="dot down"></span><span>offline</span></span>
+  </div>
+  <p>Telegram gateway for Poke Labs — daily briefings, alerts, and service management.</p>
+  <div class="links">
+    <a href="https://t.me/PokeLabsBot" class="btn-demo">Open</a>
+    <a href="https://github.com/pokelabshq/services" class="btn-src">Source</a>
+  </div>
 </div>
 
-<h2>🔍 Repo Monitor</h2>
-<div class="svc">
-<div class="svc-header"><h3>GitHub repo watcher</h3><span class="free">Free</span></div>
-<p>Watch repos for new issues, PRs, stars, and CI failures. Instant notifications.</p>
-<div class="endpoint"><span class="method">GET</span> /api/repos — List monitored repos</div>
-<div class="endpoint"><span class="method">GET</span> /api/repos/:name — Repo details</div>
+<div class="card">
+  <div class="card-header">
+    <h3>Health Dashboard</h3>
+    <span class="badge up" id="badge-dashboard"><span class="dot up"></span><span>online</span></span>
+  </div>
+  <p>Real-time monitoring for all Poke Labs services. JSON API + responsive HTML dashboard.</p>
+  <div class="links">
+    <a href="http://localhost:8799/" class="btn-demo">Demo</a>
+    <a href="http://localhost:8799/api/status" class="btn-api">API</a>
+    <a href="https://github.com/pokelabshq/services" class="btn-src">Source</a>
+  </div>
 </div>
 
-<h2>📈 Status Page</h2>
-<div class="svc">
-<div class="svc-header"><h3>Real-time service dashboard</h3><span class="free">Free</span></div>
-<p>Live status of all Poke Labs services, GitHub stats, and uptime monitoring.</p>
-<div class="endpoint"><span class="method">GET</span> / — Dashboard</div>
-<div class="endpoint"><span class="method">GET</span> /api/status — JSON status</div>
+<div class="card">
+  <div class="card-header">
+    <h3>Poke CLI</h3>
+    <span class="badge up" id="badge-cli"><span class="dot up"></span><span>ready</span></span>
+  </div>
+  <p>Command-line tool to start, stop, and monitor all Poke Labs services. Zero deps.</p>
+  <div class="links">
+    <a href="https://github.com/pokelabshq/cli" class="btn-src">Source</a>
+    <a href="https://github.com/pokelabshq/services" class="btn-src">In Services</a>
+  </div>
 </div>
 
-<h2>🛠️ All Services</h2>
-<p style="color:#9ca3af">All code is MIT licensed on <a href="https://github.com/pokelabshq/services" style="color:#8b5cf6">GitHub</a>. Run your own instance with zero dependencies — pure Python stdlib.</p>
 </div>
+
+<h2 style="margin-top:2.5rem">📦 Open Source</h2>
+<p style="color:#94a3b8;margin-bottom:1rem">All Poke Labs software is MIT licensed. Check out the repos:</p>
+<div class="links" style="margin-bottom:2rem">
+  <a href="https://github.com/pokelabshq/council" class="btn-src">pokelabshq/council</a>
+  <a href="https://github.com/pokelabshq/services" class="btn-src">pokelabshq/services</a>
+  <a href="https://github.com/pokelabshq/cli" class="btn-src">pokelabshq/cli</a>
+</div>
+</div>
+
+<footer>
+  Built by Poke Labs &middot; <a href="https://pokelabs.org" style="color:#60a5fa">pokelabs.org</a> &middot; MIT License &middot; © 2026
+</footer>
 </body>
 </html>

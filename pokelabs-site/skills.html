@@ -3,70 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Poke Labs — Skills Market</title>
+<title>skills — poke labs</title>
 <style>
-:root{--bg:#0a0a0f;--card:#13131a;--accent:#6c5ce7;--green:#00b894;--red:#ff6b6b;--text:#e0e0e0;--muted:#888;--border:#2a2a3a}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-header{padding:2rem;text-align:center;background:linear-gradient(135deg,#1a1a2e,#16213e);border-bottom:1px solid var(--border)}
-header h1{font-size:2.2rem;background:linear-gradient(135deg,#6c5ce7,#a29bfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-header p{color:var(--muted);margin-top:.5rem}
-.filters{max-width:1200px;margin:2rem auto;padding:0 1rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
-.search-input{flex:1;min-width:250px;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;outline:none}
-.search-input:focus{border-color:var(--accent)}
-.filter-select{padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;cursor:pointer}
-.toggle{padding:.5rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-size:.85rem}
-.toggle.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.stats{margin:1rem auto;max-width:1200px;padding:0 1rem;display:flex;gap:2rem;color:var(--muted);font-size:.9rem}
-.grid{max-width:1200px;margin:0 auto;padding:1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.2rem}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;transition:transform .2s,border-color .2s}
-.card:hover{transform:translateY(-2px);border-color:var(--accent)}
-.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem}
-.card h3{font-size:1.1rem;color:#fff}
-.card h3 span{color:var(--muted);font-weight:400;font-size:.8rem;margin-left:.5rem}
-.source{background:rgba(108,92,231,.2);color:#a29bfe;padding:.2rem .6rem;border-radius:4px;font-size:.75rem;white-space:nowrap}
-.card p{color:var(--muted);font-size:.9rem;line-height:1.5;margin-bottom:.75rem}
-.tags{display:flex;gap:.4rem;flex-wrap:wrap}
-.tag{background:rgba(0,184,148,.15);color:var(--green);padding:.15rem .5rem;border-radius:4px;font-size:.75rem}
-.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)}
-.card-footer a{color:var(--accent);text-decoration:none;font-size:.85rem}
-.card-footer a:hover{text-decoration:underline}
-.loading{text-align:center;padding:4rem;color:var(--muted)}
-.error{text-align:center;padding:2rem;color:var(--red)}
-.empty{text-align:center;padding:3rem;color:var(--muted)}
-.pinned{border-color:var(--green)}
-.pinned::before{content:'📌 ';font-size:.9rem}
-footer{text-align:center;padding:2rem;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:2rem}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000;--fg:#fff;--dim:#555;--muted:#333;
+  --font-mono:'SF Mono','Fira Code','Fira Mono',monospace;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+html{background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:16px;line-height:1.6}
+body{min-height:100vh}
+a{color:var(--fg);text-decoration:none;border-bottom:1px solid var(--muted);transition:border-color .2s}
+a:hover{border-color:var(--fg)}
+nav{max-width:960px;margin:0 auto;padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #111}
+nav .logo{font-family:var(--font-mono);font-size:13px;font-weight:700}
+nav .logo span{color:var(--dim)}
+nav a{font-family:var(--font-mono);font-size:11px;color:var(--dim);border:none;text-transform:uppercase;letter-spacing:.05em}
+nav a:hover{color:var(--fg)}
+.container{max-width:960px;margin:0 auto;padding:40px 24px}
+h1{font-family:var(--font-mono);font-size:24px;font-weight:700;margin-bottom:4px}
+.subtitle{color:var(--dim);font-size:14px;margin-bottom:32px}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:24px}
+.search-input{flex:1;min-width:250px;padding:10px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:4px;color:var(--fg);font-size:14px;outline:none}
+.search-input:focus{border-color:#333}
+.filter-select{padding:10px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:4px;color:var(--fg);font-size:14px;cursor:pointer}
+.toggle{padding:6px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:4px;color:var(--dim);cursor:pointer;font-family:var(--font-mono);font-size:11px}
+.toggle.active{border-color:#333;color:var(--fg)}
+.stats{display:flex;gap:24px;color:var(--muted);font-family:var(--font-mono);font-size:11px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:4px;padding:16px}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.card h3{font-size:14px;color:#fff;font-family:var(--font-mono)}
+.card h3 span{color:var(--muted);font-weight:400;font-size:11px;margin-left:8px}
+.source{font-family:var(--font-mono);font-size:10px;color:var(--muted);border:1px solid #1a1a1a;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.card p{color:var(--dim);font-size:13px;line-height:1.5;margin-bottom:8px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--font-mono);font-size:10px;color:var(--muted);border:1px solid #1a1a1a;padding:2px 6px;border-radius:3px}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #0a0a0a}
+.card-footer a{color:var(--fg);text-decoration:none;font-family:var(--font-mono);font-size:11px;border-bottom:1px solid var(--muted)}
+.card-footer a:hover{border-color:var(--fg)}
+.loading{text-align:center;padding:48px;color:var(--dim)}
+.empty{text-align:center;padding:32px;color:var(--dim)}
+footer{border-top:1px solid #111;padding:24px;margin-top:40px}
+footer p{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
+<nav>
+  <div class="logo">poke<span> labs</span></div>
+  <a href="/">← back</a>
+</nav>
+<div class="container">
+  <h1>skills market</h1>
+  <p class="subtitle">discover, use, and share ai agent skills.</p>
 
-<header>
-<h1>🧩 Skills Market</h1>
-<p>Discover, use, and share AI agent skills. Powered by Poke Labs & AI Council.</p>
-</header>
+  <div class="filters">
+    <input class="search-input" type="text" id="search" placeholder="search skills by name or description...">
+    <select class="filter-select" id="sourceFilter">
+      <option value="all">all sources</option>
+      <option value="official">official</option>
+      <option value="community">community</option>
+    </select>
+    <button class="toggle" id="pinnedToggle">pinned only</button>
+  </div>
 
-<div class="filters">
-<input class="search-input" type="text" id="search" placeholder="🔍 Search skills by name or description...">
-<select class="filter-select" id="sourceFilter">
-<option value="all">All Sources</option>
-<option value="official">Official</option>
-<option value="community">Community</option>
-</select>
-<button class="toggle" id="pinnedToggle">📌 Pinned Only</button>
-<button class="toggle" id="recentToggle">🕐 Recent</button>
+  <div class="stats" id="stats"></div>
+  <div class="grid" id="grid"><div class="loading">loading skills...</div></div>
 </div>
-
-<div class="stats" id="stats"></div>
-
-<div class="grid" id="grid">
-<div class="loading">Loading skills...</div>
-</div>
-
-<footer>Poke Labs © 2026 · MIT License · <a href="https://github.com/pokelabshq" style="color:var(--accent);text-decoration:none">GitHub</a></footer>
+<footer><p>poke labs © 2026 · mit license</p></footer>
 
 <script>
-const API = 'https://ai-council.pokelabs.com/docs/api/skills-index.json';
+const API = '/api/skills-index.json';
 let allSkills = [];
 let pinned = JSON.parse(localStorage.getItem('poked_skills') || '[]');
 
@@ -77,7 +84,7 @@ async function loadSkills() {
     allSkills = data.skills || [];
     render();
   } catch(e) {
-    document.getElementById('grid').innerHTML = '<div class="error">⚠️ Could not load skills index. Try again later.</div>';
+    document.getElementById('grid').innerHTML = '<div class="loading">could not load skills index.</div>';
   }
 }
 
@@ -96,9 +103,9 @@ function render() {
     const pb = pinned.includes(b.name) ? 0 : 1;
     return pa - pb || a.name.localeCompare(b.name);
   });
-  document.getElementById('stats').innerHTML = '<span>📦 ' + filtered.length + ' skills</span><span>📌 ' + pinned.length + ' pinned</span>';
+  document.getElementById('stats').innerHTML = '<span>' + filtered.length + ' skills</span><span>' + pinned.length + ' pinned</span>';
   if (!filtered.length) {
-    document.getElementById('grid').innerHTML = '<div class="empty">No skills match your filters.</div>';
+    document.getElementById('grid').innerHTML = '<div class="empty">no skills match your filters.</div>';
     return;
   }
   document.getElementById('grid').innerHTML = filtered.map(s => {
@@ -108,8 +115,8 @@ function render() {
       '<span class="source">' + (s.source||'official') + '</span></div>' +
       '<p>' + (s.description||'No description.') + '</p>' +
       '<div class="tags">' + (s.tags||[]).map(t=>'<span class="tag">'+t+'</span>').join('') + '</div>' +
-      '<div class="card-footer"><a href="' + (s.url||'#') + '">View →</a>' +
-      '<span>' + (isPinned?'📌 Pinned':'<span onclick="togglePin(\''+s.name+'\')" style="cursor:pointer">📌 Pin</span>') + '</span></div>' +
+      '<div class="card-footer"><a href="' + (s.url||'#') + '">view →</a>' +
+      '<span>' + (isPinned?'pinned':'<span onclick="togglePin(\''+s.name+'\')" style="cursor:pointer;color:var(--muted);font-family:var(--font-mono);font-size:11px">pin</span>') + '</span></div>' +
       '</div>';
   }).join('');
 }
@@ -124,7 +131,6 @@ function togglePin(name) {
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('sourceFilter').addEventListener('change', render);
 document.getElementById('pinnedToggle').addEventListener('click', function(){this.classList.toggle('active');render()});
-document.getElementById('recentToggle').addEventListener('click', function(){this.classList.toggle('active');render()});
 
 loadSkills();
 </script>
