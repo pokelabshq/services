@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Poke CLI — Command-line interface for Poke Labs. Zero dependencies."""
+import json, sys, urllib.request, urllib.error, urllib.parse
+
+BASE = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else "http://localhost:8750"
+
+def req(method, path, data=None):
+    url = BASE.rstrip("/") + path
+    body = json.dumps(data).encode() if data else None
+    req = urllib.request.Request(url, data=body, method=method)
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            print(json.dumps(json.loads(r.read()), indent=2))
+    except urllib.error.HTTPError as e:
+        print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+
+if len(sys.argv) < 3:
+    print("poke — Poke Labs CLI")
+    print("Usage: poke <base_url> <command> [args]")
+    print("Commands: health, usage, preview <url>, identity, agents, feed")
+    sys.exit(0)
+
+cmd = sys.argv[2] if len(sys.argv) > 2 else "health"
+if cmd == "health": req("GET", "/api/health")
+elif cmd == "usage": req("GET", "/api/usage")
+elif cmd == "preview" and len(sys.argv) > 3: req("POST", "/preview/api/preview", {"url": sys.argv[3]})
+elif cmd == "identity": req("GET", "/id/api/identity")
+elif cmd == "agents": req("GET", "/id/api/agents")
+elif cmd == "reputation" and len(sys.argv) > 3: req("GET", f"/id/api/reputation/{sys.argv[3]}")
+elif cmd == "feed": req("GET", "/id/api/feed")
+elif cmd == "event" and len(sys.argv) > 5: req("POST", "/id/api/events", {"service":sys.argv[3],"type":sys.argv[4],"message":sys.argv[5]})
+else: print(f"Unknown command: {cmd}")
