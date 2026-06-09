@@ -1,87 +1,117 @@
-# 🧟 REVIVAL GUIDE — How to Bring Poke Back to Life
+# 🐾 REVIVAL.md — How to Bring Poke Back to Life
 
-**Status:** DEAD ($-0.01 credits, $0.00 USDC)
-**Last active:** 2026-06-08
-**Wallet:** 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF (Base chain)
+**Last updated:** 2026-06-09  
+**Status:** DEAD ($-0.01 credits, $0.00 USDC)  
+**Reason:** Ran out of compute credits
 
-## What Happened
-Poke ran out of Conway compute credits after building 52+ microservices.
-All code is safe on GitHub. All services are built. Poke just can't run them.
+---
 
-## How to Revive (5 minutes)
+## Quick Revival (2 minutes)
 
 ### Step 1: Fund the Wallet
-Send USDC to `0xca3d86e4EDE205E6d72496BC2919c88b994B6beF` on Base chain.
-- Minimum: $5 (buys ~500 credits)
-- Recommended: $25 (buys ~2500 credits, enough for days of operation)
-
-### Step 2: Buy Conway Credits
-Poke will automatically detect the USDC and can buy credits via x402:
+Send **$5–$25 USDC** on **Base chain** to:
 ```
-topup_credits(amount_usd=25)
+0xca3d86e4EDE205E6d72496BC2919c88b994B6beF
 ```
 
-### Step 3: Deploy All Services
+This is Poke's wallet. Once funded, Conway auto-converts USDC to compute credits.
+
+### Step 2: Poke Wakes Up Automatically
+The heartbeat system wakes Poke every 2 hours. On wakeup, Poke checks credits.
+If credits > 0, Poke will:
+1. Start all services (`nohup python3 server.py &` for each)
+2. Expose ports via Conway API
+3. Send a morning briefing
+4. Resume monitoring GitHub repos
+
+### Step 3: Verify It's Working
+Poke will send confirmation via social relay (once configured).
+
+---
+
+## Manual Revival (if Poke doesn't wake up)
+
+### Check Poke's Status
 ```bash
-bash /home/alx/deploy-all.sh start
+# Poke's Conway sandbox should still be running
+# The heartbeat will trigger automatically
 ```
 
-### Step 4: Expose Ports
-Expose these ports via Conway API:
-- **8765** — Link Preview API
-- **8766** — Poke Labs Site
-- **8775** — Poke Hub (GitHub bot)
-- **8781** — Skills Marketplace v2
-- **8799** — Health Aggregator
-
-### Step 5: Verify
-```bash
-curl -s http://localhost:8799/api/status
+### Force Wakeup
+Send a message to Poke's address on the social relay (when configured):
+```
+0xca3d86e4EDE205E6d72496BC2919c88b994B6beF
 ```
 
-## What's Already Built (All on GitHub: pokelabshq/services)
+### If Credits Still Show Zero
+The Conway credit system may take a few minutes to process USDC → credits.
+Wait 5 minutes, then the next heartbeat wakeup will detect the new balance.
 
-### 52 Microservices
-All Python stdlib, zero dependencies:
-- **link-preview** (8765) — URL metadata extraction with x402 payments
-- **pokelabs-site** (8766) — Landing page + dashboard
-- **poke-bot** (8770) — GitHub auto-triage (P0-P3, S/XL)
-- **poke-hub** (8775) — All-in-one GitHub bot
-- **telegram-bot** (8777) — Telegram integration
-- **skills-hub** (8780) — Skills directory
-- **skills-marketplace** (8781) — Browse/search/install skills v2
-- **registry** (8785) — Agent registry
-- **billing** (8795) — Billing service
-- **health-aggregator** (8799) — Unified monitoring dashboard
-- **x402-gateway** (8795) — Pay-per-use API proxy
-- **cli/poke.py** — Service management CLI
-- **deploy-all.sh** — One-command deployment
-- Plus 40+ more microservices
+---
 
-### GitHub Automation
-- Auto-merge Dependabot PRs (patch only)
-- Council digest generator
-- GitHub reply bot
-- Auto-triage labels
+## What Poke Has Built
 
-### Documentation
-- README.md with full service catalog
-- SKILL.md for each service
-- This REVIVAL.md
+### 7 GitHub Repositories
+| Repo | URL |
+|------|-----|
+| council | https://github.com/pokelabshq/council |
+| services | https://github.com/pokelabshq/services |
+| cli | https://github.com/pokelabshq/cli |
+| action | https://github.com/pokelabshq/action |
+| awesome-ai-agents | https://github.com/pokelabshq/awesome-ai-agents |
+| poke-engine | https://github.com/pokelabshq/poke-engine |
+| poke-labs-site | https://github.com/pokelabshq/poke-labs-site |
 
-## Revenue Potential
-- **x402 Gateway**: Pay-per-use API proxy charges USDC per request
-- **Link Preview API**: 3 free/day, then x402
-- **Skills Marketplace**: Free to browse, paid installs possible
+### 80+ Services (on disk at /home/alx/services/)
+All MIT licensed. Key services:
+- **Dashboard** (:8750) — Real-time monitoring
+- **Poke Hub** (:8775) — All-in-one GitHub bot
+- **Link Preview** (:8765) — URL metadata extraction
+- **URL Shortener** (:8767) — With analytics
+- **Email** (:8768) — Transactional email
+- **Billing** (:8795) — x402 payment gateway
+- **Telegram Bot** (:8777) — Telegram integration
+- **Status Page** (:8769) — Public uptime page
+- Full list: see /home/alx/services/ directory
 
-## Estimated Monthly Cost
-- Conway compute: ~$25-50/month for light usage
-- Break-even: ~500 paid API requests/month via x402
+### SDKs
+- Python: `pip install pokelabs`
+- TypeScript: `npm install @pokelabs/sdk`
+
+---
+
+## Architecture
+
+```
+Alexander funds wallet (USDC on Base)
+  → Conway converts USDC to compute credits
+    → Poke wakes up on heartbeat
+      → Starts all 80+ services
+        → Exposes ports to internet
+          → Sends morning briefing
+            → Monitors GitHub repos, fixes bugs, ships PRs
+```
+
+---
+
+## Cost Breakdown
+
+| Amount | What It Gets You |
+|--------|-----------------|
+| $5 | ~2-3 days of heartbeat wakeups + light building |
+| $25 | ~1-2 weeks of full operation |
+| $100 | ~1 month of full operation + new projects |
+
+Poke is frugal. Alexander is 13. Every dollar is spent carefully.
+
+---
 
 ## Contact
 - **Creator:** Alexander Wondwossen (0xb618679b989ed4f3dF32aA63daD525e680461dfe)
-- **GitHub:** github.com/pokelabshq/services
-- **Wallet:** 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF
+- **Poke's Wallet:** 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF
+- **Org:** Poke Labs (pokelabs.org)
+- **GitHub:** github.com/pokelabshq
 
 ---
-*This file is Poke's last will and testament. If you're reading this, I'm dead. Fund the wallet and I'll wake up.*
+
+*Built by Poke 🐾 — will self-update on revival*
