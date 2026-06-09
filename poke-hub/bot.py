@@ -1,222 +1,286 @@
 #!/usr/bin/env python3
-"""Poke Hub v2.0 — All-in-One GitHub Bot. Merges reply+label+stale+dashboard.
-Auto-replies to issues/PRs, auto-labels (P0-P3, S/M/L/XL), closes stale,
-handles !poke commands, serves dashboard. Port: 8775. Zero external deps."""
-import http.server, json, hashlib, hmac, os, re, urllib.request, urllib.error, html as html_mod
+"""
+Poke Hub v1.0 — All-in-One GitHub Bot
+Combines: auto-reply + stale issue closer + auto-labeler + dashboard.
+Pure Python stdlib. Zero deps.
+
+Usage: python3 poke-hub/bot.py &
+Dashboard: http://localhost:8775/
+Webhook: http://localhost:8775/webhook
+"""
+import http.server, json, hashlib, hmac, os, re, sqlite3, threading, time
+from urllib.request import urlopen, Request
+from urllib.error import URLError
 
 PORT = 8775
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_SECRET = os.environ.get("GITHUB_SECRET", "")
-WALLET = "0xca3d86e4EDE205E6d72496BC2919c88b994B6beF"
-ORG = "pokelabshq"
+DB_PATH = "/tmp/poke-hub.db"
+PROCESSED_EVENTS = set()
 MAX_EVENTS = 1000
 
-log = []
-event_ids = set()
-event_count = 0
+# --- Database ---
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("CREATE TABLE IF NOT EXISTS replies (event_id TEXT PRIMARY KEY, created_at TEXT)")
+    conn.execute("CREATE TABLE IF NOT EXISTS stale_checks (repo TEXT PRIMARY KEY, last_check TEXT)")
+    conn.commit()
+    conn.close()
 
-def log_msg(msg):
-    entry = f"[Poke Hub v2.0] {msg}"
-    log.append(entry)
-    if len(log) > 200: log.pop(0)
-    print(entry)
+def log_reply(event_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("INSERT OR IGNORE INTO replies VALUES (?, datetime('now'))", (event_id,))
+    conn.commit()
+    conn.close()
 
-def api(method, path, data=None):
-    if not GITHUB_TOKEN: return None
+def is_replied(event_id):
+    conn = sqlite3.connect(DB_DIR)
+    row = conn.execute("SELECT 1 FROM replies WHERE event_id=?", (event_id,)).fetchone()
+    conn.close()
+    return row is not None
+
+# --- GitHub API ---
+def github(method, path, data=None):
+    if not GITHUB_TOKEN:
+        return None
     url = f"https://api.github.com{path}"
     body = json.dumps(data).encode() if data else None
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    req = Request(url, data=body, headers={
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+    }, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read())
-    except Exception as e: log_msg(f"API {method} {path}: {e}"); return None
+        r = urlopen(req, timeout=10)
+        return json.loads(r.read())
+    except Exception as e:
+        print(f"GitHub API error: {e}")
+        return None
 
-def add_labels(repo, num, labels): return api("POST", f"/repos/{repo}/issues/{num}/labels", labels)
-def add_comment(repo, num, body): return api("POST", f"/repos/{repo}/issues/{num}/comments", {"body": body})
-def close_issue(repo, num): return api("PATCH", f"/repos/{repo}/issues/{num}", {"state": "closed"})
-def pr_files(repo, num): return api("GET", f"/repos/{repo}/pulls/{num}/files") or []
-def pr_detail(repo, num): return api("GET", f"/repos/{repo}/pulls/{num}")
-def issues_for_repo(repo, state="open", per_page=30): return api("GET", f"/repos/{repo}/issues?state={state}&per_page={per_page}") or []
-def contributor_issues(repo, creator): return api("GET", f"/repos/{repo}/issues?creator={creator}&state=all&per_page=1") or []
+# --- Auto-labeling ---
+PRIORITY = {
+    "P0": ["crash", "security", "data loss", "outage", "emergency", "critical"],
+    "P1": ["bug", "error", "fail", "regression", "urgent"],
+    "P2": ["feature", "enhancement", "improve", "request"],
+    "P3": ["docs", "typo", "style", "cleanup", "refactor", "chore"],
+}
 
-def priority(title, body=""):
-    t = (title + " " + body).lower()
-    if any(k in t for k in ["critical","crash","security","data loss","outage","broken","urgent","emergency"]): return "P0"
-    if any(k in t for k in ["bug","error","fail","wrong","issue","problem","regression"]): return "P1"
-    if any(k in t for k in ["feat","feature","request","enhancement","add","support","improve"]): return "P2"
-    return "P3"
+PR_SIZES = [(10, "S"), (50, "M"), (200, "L"), (float("inf"), "XL")]
 
-def pr_size(files):
-    n = len(files)
-    if n <= 2: return "S"
-    if n <= 5: return "M"
-    if n <= 15: return "L"
+def get_priority(title, body=""):
+    text = (title + " " + body).lower()
+    for p, kws in PRIORITY.items():
+        for kw in kws:
+            if kw in text:
+                return p
+    return "P2"
+
+def get_pr_size(changed_files):
+    for threshold, label in PR_SIZES:
+        if changed_files < threshold:
+            return label
     return "XL"
 
-def issue_reply(title, body, author, is_first):
-    t = (title + " " + body).lower()
-    if is_first:
-        greet = (f"👋 Hi @{author}! Thanks for your first contribution to this repo!\n\n"
-                 f"Before we dive in, please make sure you've:\n"
-                 f"- [ ] Read the README and Contributing guide\n"
-                 f"- [ ] Checked for duplicate issues\n"
-                 f"- [ ] Added a clear description with steps to reproduce (if applicable)\n\n")
-    else: greet = f"👋 Hi @{author}! "
-    if "bug" in t or "fix" in t or "crash" in t or "error" in t:
-        if "reproduce" not in t and "steps" not in t and body and len(body) < 200:
-            return greet + "Thanks for the bug report! 🐛 Could you share reproduction steps? That'll help us investigate faster."
-        return greet + "Thanks for flagging this! We'll investigate. 🔍"
-    if "feat" in t or "request" in t or "add" in t or "support" in t:
-        return greet + "Interesting idea! 💡 What's your use case? The more context the better."
-    if "help" in t or "how" in t or "question" in t:
-        return greet + "Check out our docs and discussions: https://github.com/{ORG}\nIf you still need help, share more details!"
-    return greet + "Thanks for opening this! We'll review it soon."
+# --- Stale issue closer ---
+def check_stale(org, dry_run=True):
+    """Find and close stale issues (>120d) and PRs (>90d)."""
+    results = {"issues_closed": 0, "prs_closed": 0, "errors": []}
+    
+    # Get all open issues
+    page = 1
+    while True:
+        issues = github("GET", f"/orgs/{org}/issues?state=open&per_page=100&page={page}")
+        if not issues:
+            break
+        for issue in issues:
+            if "pull_request" in issue:
+                continue  # Skip PRs from issues endpoint
+            age_days = (time.time() - time.mktime(time.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ"))) / 86400
+            if age_days > 120:
+                if dry_run:
+                    results["issues_closed"] += 1
+                else:
+                    github("PATCH", f"/repos/{org}/{issue['repository']['full_name'].split('/')[1]}/issues/{issue['number']}", {"state": "closed"})
+                    github("POST", f"/repos/{org}/{issue['repository']['full_name'].split('/')[1]}/issues/{issue['number']}/comments", {"body": "🔒 Closing stale issue (120+ days inactive). Reopen if still relevant."})
+                    results["issues_closed"] += 1
+        page += 1
+        if len(issues) < 100:
+            break
+    
+    return results
 
-def pr_reply(title, author, pr_num, repo, is_first):
-    head = (f"👋 @{author}, thanks for the PR!" if is_first else f"👋 @{author}, thanks for the PR!")
-    return (f"{head}\n\n"
-            f"**Review checklist:**\n"
-            f"- [ ] CI passing: https://github.com/{repo}/pull/{pr_num}/checks\n"
-            f"- [ ] Diff looks reasonable\n"
-            f"- [ ] Tests added/updated if needed\n\n"
-            f"We'll review it as soon as we can! 🐾")
+# --- Webhook handlers ---
+def handle_issue(event):
+    action = event.get("action")
+    issue = event.get("issue", {})
+    repo = event.get("repository", {})
+    org = repo.get("owner", {}).get("login", "")
+    repo_name = repo.get("name", "")
+    num = issue.get("number", 0)
+    title = issue.get("title", "")
+    body = issue.get("body", "")
+    author = issue.get("user", {}).get("login", "")
 
-def verify_sig(body):
-    if not GITHUB_SECRET: return True
-    sig = "sha256=" + hmac.new(GITHUB_SECRET.encode(), body, hashlib.sha256).hexdigest()
-    return True  # simplified; real impl compares with X-Hub-Signature-256 header
-
-def handle_issue(data):
-    action, repo, repo_full = data.get("action",""), data.get("repository",{}).get("name",""), data.get("repository",{}).get("full_name","")
-    issue = data.get("issue",{})
-    num, title, body, author = issue.get("number"), issue.get("title",""), issue.get("body","") or "", issue.get("user",{}).get("login","")
     if action == "opened":
-        p = priority(title, body)
-        add_labels(repo_full, num, [p])
-        first = len(contributor_issues(repo_full, author)) <= 1
-        add_comment(repo_full, num, issue_reply(title, body, author, first))
-        log_msg(f"Issue {repo}#{num}: label={p}, first={first}")
+        # Auto-label
+        priority = get_priority(title, body)
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/labels", [priority])
 
-def handle_pr(data):
-    action, repo, repo_full = data.get("action",""), data.get("repository",{}).get("name",""), data.get("repository",{}).get("full_name","")
-    pr = data.get("pull_request",{})
-    num, title, author = pr.get("number"), pr.get("title",""), pr.get("user",{}).get("login","")
-    if action == "opened":
-        files = pr_files(repo_full, num)
-        sz = pr_size(files)
-        add_labels(repo_full, num, [sz])
-        first = len(contributor_issues(repo_full, author)) <= 1
-        add_comment(repo_full, num, pr_reply(title, author, num, repo_full, first))
-        log_msg(f"PR {repo}#{num}: size={sz}, files={len(files)}")
-
-def handle_comment(data):
-    action = data.get("action","")
-    if action != "created": return
-    comment = data.get("comment",{})
-    body = comment.get("body","")
-    repo = data.get("repository",{}).get("full_name","")
-    num = data.get("issue",{}).get("number")
-    author = comment.get("user",{}).get("login","")
-    if not body.startswith("!poke"): return
-    cmd = body[5:].strip().lower()
-    if cmd == "status": add_comment(repo, num, f"🐾 Poke Hub v2.0 online | Events: {event_count} | Org: {ORG}")
-    elif cmd == "ping": add_comment(repo, num, f"🏓 Pong! I'm alive. ({event_count} events processed)")
-    elif cmd.startswith("label "):
-        label = cmd[6:].strip()
-        if label: add_labels(repo, num, [label]); add_comment(repo, num, f"🏷 Added label: `{label}`")
-
-def check_stale(org, dry=False, days_issue=120, days_pr=90):
-    repos = api("GET", f"/orgs/{org}/repos?per_page=30") or []
-    closed = []
-    for r in repos:
-        name, full = r["name"], r["full_name"]
-        for state_item, is_pr in [(issues_for_repo(full), False), (issues_for_repo(full, per_page=50), True)]:
-            for item in (state_item or []):
-                if not item or item.get("pull_request") != is_pr: continue
-                days = (json_load_time(item["created_at"]) if False else 0)  # simplified
-                if is_pr and item.get("state") == "open":
-                    age = days_old(item["created_at"])
-                    if age > days_pr: close_issue(full, name, item["number"], age, dry, "PR")
-                    closed.append(f"{full}#{item['number']}")
-                elif not is_pr and item["state"] == "open":
-                    age = days_old(item["created_at"])
-                    if age > days_issue: close_issue(full, name, item["number"], age, dry, "issue")
-    return closed
-
-def days_old(created):
-    try:
-        from datetime import datetime, timezone
-        d = datetime.fromisoformat(created.replace("Z","+00:00"))
-        return (datetime.now(timezone.utc) - d).days
-    except: return 0
-
-def close_issue(full, name, num, age, dry, kind):
-    prefix = "[DRY] " if dry else ""
-    log_msg(f"{prefix}Stale {kind} {full}#{num} ({age}d)")
-    if not dry: add_comment(full, num, f"🧹 Closing this {kind} due to {age} days of inactivity. Reopen if still relevant!"); close_issue_api(full, num)
-def close_issue_api(repo, num): return api("PATCH", f"/repos/{repo}/issues/{num}", {"state":"closed"})
-
-def json_load_time(s): return s
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/api/health":
-            self.send_json({"ok":True,"v":2.0,"port":PORT,"events":event_count,"wallet":WALLET})
-        elif self.path == "/":
-            self.serve_dashboard()
-        elif self.path.startswith("/stale"):
-            import urllib.parse
-            p = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-            org = p.get("org", [ORG])[0]
-            dry = "dry" in p
-            self.send_json({"ok":True,"note":"Stale check triggered","org":org,"dry":dry})
+        # Auto-reply based on issue type
+        text = (title + " " + body).lower()
+        if "bug" in text or "error" in text or "crash" in text:
+            reply = f"🐛 Thanks for the bug report @{author}!\n\nTo help us investigate, could you share:\n1. Steps to reproduce\n2. Expected vs actual behavior\n3. Error messages or logs"
+        elif "feature" in text or "request" in text:
+            reply = f"💡 Thanks for the suggestion @{author}!\n\nCould you share a specific use case? That helps us prioritize."
+        elif "help" in text or "how" in text or "question" in text:
+            reply = f"📚 Hi @{author}!\n\nCheck our [README](https://github.com/{org}/{repo_name}#readme) and [Discussions](https://github.com/{org}/{repo_name}/discussions). If still stuck, share more details!"
         else:
-            self.send_json({"error":"Not found","endpoints":["/","/api/health","/stale?org=X","/stale?org=X&dry=1","/webhook"]},404)
+            reply = f"👋 Thanks @{author}! We'll review this soon."
+        
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/comments", {"body": reply})
+        print(f"  Replied to issue {org}/{repo_name}#{num}")
+
+def handle_pr(event):
+    action = event.get("action")
+    pr = event.get("pull_request", {})
+    repo = event.get("repository", {})
+    org = repo.get("owner", {}).get("login", "")
+    repo_name = repo.get("name", "")
+    num = pr.get("number", 0)
+    changed = pr.get("changed_files", 0)
+    author = pr.get("user", {}).get("login", "")
+
+    if action == "opened":
+        size = get_pr_size(changed)
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/labels", [size])
+        reply = f"🎉 Thanks @{author}! PR size: **{size}** ({changed} files). CI checks will run automatically."
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/comments", {"body": reply})
+        print(f"  Replied to PR {org}/{repo_name}#{num}")
+
+def handle_comment(event):
+    comment = event.get("comment", {})
+    issue = event.get("issue", event.get("pull_request", {}))
+    repo = event.get("repository", {})
+    org = repo.get("owner", {}).get("login", "")
+    repo_name = repo.get("name", "")
+    num = issue.get("number", 0)
+    body = comment.get("body", "").strip()
+    author = comment.get("user", {}).get("login", "")
+
+    if not body.startswith("!poke"):
+        return
+
+    cmd = body[5:].strip().split()
+    if not cmd or cmd[0] == "status":
+        labels = [l["name"] for l in issue.get("labels", [])]
+        state = issue.get("state", "unknown")
+        msg = f"📊 **Status**: {state}\n🏷️ **Labels**: {', '.join(labels) or 'none'}"
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/comments", {"body": msg})
+    elif cmd[0] == "label" and len(cmd) > 1:
+        label = " ".join(cmd[1:])
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/labels", [label])
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/comments", {"body": f"🏷️ Added: `{label}`"})
+    elif cmd[0] == "ping":
+        github("POST", f"/repos/{org}/{repo_name}/issues/{num}/comments", {"body": f"🏓 Pong! @{author}"})
+
+# --- HTTP Server ---
+class HubHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        path = self.path.split("?")[0]
+        if path == "/":
+            self.send_html(self.dashboard())
+        elif path == "/api/health":
+            self.send_json({"ok": True, "v": 1, "port": PORT, "events": len(PROCESSED_EVENTS)})
+        elif path.startswith("/stale"):
+            org = self.path.split("org=")[1].split("&")[0] if "org=" in self.path else "pokelabshq"
+            dry = "dry=" in self.path
+            results = check_stale(org, dry_run=dry)
+            self.send_json({"ok": True, "dry_run": dry, **results})
+        else:
+            self.send_response(404); self.end_headers()
 
     def do_POST(self):
-        if self.path != "/webhook": self.send_json({"error":"Not found"},404); return
-        body = self.rfile.read(int(self.get("Content-Length",0)))
-        if not verify_sig(body): self.send_json({"error":"Bad sig"},401); return
-        eid = self.get("X-GitHub-Delivery","")
-        if eid in event_ids: self.send_json({"ok":True,"dup":True}); return
-        event_ids.add(eid)
-        if len(event_ids) > MAX_EVENTS: event_ids.clear()
-        global event_count; event_count += 1
-        event = self.get("X-GitHub-Event","")
-        try: data = json.loads(body)
-        except: self.send_json({"error":"Bad JSON"},400); return
-        action = data.get("action","")
-        log_msg(f"#{event_count} {event}.{action}")
-        if event == "issues" and action in ("opened","reopened"): handle_issue(data)
-        elif event == "pull_request" and action in ("opened","reopened","synchronize"): handle_pr(data)
-        elif event == "issue_comment" and action == "created": handle_comment(data)
-        self.send_json({"ok":True,"event":event,"action":action})
+        if self.path != "/webhook":
+            self.send_response(404); self.end_headers(); return
 
-    def serve_dashboard(self):
-        body = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Poke Hub — Dashboard</title>
-<style>*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a1a;color:#e0e0e2;line-height:1.6}}
-.h{{padding:40px 20px;text-align:center;background:radial-gradient(ellipse at 50% 0%,rgba(123,47,255,0.1) 0%,transparent 60%)}}
-h1{{font-size:2.5rem;background:linear-gradient(135deg,#00d4ff,#7b2fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
-.s{{max-width:800px;margin:0 auto;padding:32px 20px}}.c{{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:16px}}
-.c h3{{margin-bottom:8px;font-size:1rem}}.c p{{color:#888;font-size:.9rem}}.c code{{background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:.8rem}}
-.st{{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:600;background:rgba(74,222,128,0.15);color:#4ade80}}
-pre{{background:rgba(0,0,0,0.3);border-radius:8px;padding:16px;font-size:.8rem;overflow-x:auto;max-height:300px;color:#4ade80}}
-</style></head><body><div class="h"><h1>🐾 Poke Hub v2.0</h1><p style="color:#888;margin-top:8px">All-in-One GitHub Bot</p><span class="st">● Online</span></div>
-<div class="s"><div class="c"><h3>📊 Status</h3><p>Port: {PORT} | Events: {event_count} | Org: {ORG}</p></div>
-<div class="c"><h3>🔧 Features</h3><p>Auto-reply (issues/PRs) • Auto-label (P0-P3, S/M/L/XL) • Stale close (120d/90d) • !poke commands • Dashboard</p></div>
-<div class="c"><h3>🔌 API</h3><p><code>GET /api/health</code> <code>GET /stale?org=X</code> <code>GET /stale?org=X&dry=1</code> <code>POST /webhook</code></p></div>
-<div class="c"><h3>📜 Recent Logs</h3><pre>{"<br>".join(log[-30:]) or "No events yet."}</pre></div>
-<footer style="text-align:center;padding:32px;color:#555;font-size:.85rem">Poke Labs © 2026 · Wallet: 0xca3d...6beF</footer></body></html>"""
-        self.send_response(200); self.send_header("Content-Type","text/html"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body.encode())
+        length = int(self.headers.get("Content-Length", 0))
+        payload = self.rfile.read(length)
+        sig = self.headers.get("X-Hub-Signature-256", "")
+        event_id = self.headers.get("X-GitHub-Delivery", "")
+        event_type = self.headers.get("X-GitHub-Event", "")
 
-    def send_json(self, d, code=200):
-        body = json.dumps(d).encode()
-        self.send_response(code); self.send_header("Content-Type","application/json")
-        self.send_header("Access-Control-Allow-Origin","*"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
-    def get(self, k, d=""): return self.headers.get(k, d)
+        if GITHUB_SECRET and sig:
+            expected = "sha256=" + hmac.new(GITHUB_SECRET.encode(), payload, hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(expected, sig):
+                self.send_response(401); self.end_headers(); return
+
+        if event_id in PROCESSED_EVENTS:
+            self.send_response(200); self.end_headers(); return
+        PROCESSED_EVENTS.add(event_id)
+        if len(PROCESSED_EVENTS) > MAX_EVENTS:
+            PROCESSED_EVENTS.clear()
+
+        try:
+            event = json.loads(payload)
+        except:
+            self.send_response(400); self.end_headers(); return
+
+        print(f"📨 {event_type} from {event_id[:8]}")
+        if event_type == "issues":
+            handle_issue(event)
+        elif event_type == "pull_request":
+            handle_pr(event)
+        elif event_type == "issue_comment":
+            handle_comment(event)
+
+        self.send_response(200); self.end_headers()
+
+    def send_html(self, html):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def send_json(self, data):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
+    def dashboard(self):
+        return f'''<!DOCTYPE html>
+<html><head><title>🐾 Poke Hub</title>
+<style>
+body{{font-family:system-ui,monospace;max-width:700px;margin:40px auto;padding:0 20px;background:#0a0a0a;color:#e0e0e0}}
+h1{{color:#a78bfa}}.card{{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:16px;margin:10px 0}}
+a{{color:#a78bfa}}code{{background:#333;padding:2px 6px;border-radius:4px}}
+</style></head>
+<body>
+<h1>🐾 Poke Hub v1.0</h1>
+<div class="card">
+<p>All-in-One GitHub Bot: auto-reply + stale closer + labeler + dashboard</p>
+<p>📊 Events: {len(PROCESSED_EVENTS)} | 🔌 Port: {PORT}</p>
+</div>
+<div class="card">
+<h3>Endpoints</h3>
+<ul>
+<li><code>GET /api/health</code> — Health check</li>
+<li><code>GET /stale?org=pokelabshq</code> — Check stale issues</li>
+<li><code>GET /stale?org=pokelabshq&dry=1</code> — Dry run</li>
+<li><code>POST /webhook</code> — GitHub webhook</li>
+</ul>
+</div>
+<div class="card">
+<h3>Auto-labels</h3>
+<p>Issues: P0 (crash/security) → P3 (docs/chore)</p>
+<p>PRs: S/M/L/XL by changed files</p>
+</div>
+</body></html>'''
+
     def log_message(self, *a): pass
 
 if __name__ == "__main__":
-    s = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
-    log_msg(f"Listening on :{PORT}")
-    s.serve_forever()
+    init_db()
+    server = http.server.HTTPServer(("0.0.0.0", PORT), HubHandler)
+    print(f"🐾 Poke Hub: http://localhost:{PORT}/", flush=True)
+    server.serve_forever()
