@@ -17,7 +17,45 @@ python3 services/link-preview/server.py &
 curl http://localhost:8765/api/health
 ```
 
-## Services (76 total)
+## Services (89 total)
+
+### Core Infrastructure
+- **API Gateway** (:8760) — Route, auth, rate limiting
+- **Health Aggregator** (:8762) — Unified health checks
+- **Dashboard** (:8780) — Real-time web UI
+- **Billing** (:8766) — x402 payment middleware
+- **Revenue Dashboard** (:8785) — Revenue tracking
+- **Daily Briefing** (:8761) — Morning digest
+
+### Utility APIs
+- **Link Preview** (:8765) — URL metadata extraction
+- **Color API** (:8767) — HEX/RGB/HSL/CMYK conversion
+- **Hash Generator** (:8768) — MD5/SHA/bcrypt
+- **Keyword API** (:8769) — TF-IDF keyword extraction
+- **Word Analyzer** (:8773) — Readability, sentiment
+- **OG Generator** (:8774) — OpenGraph image generation
+- **Email Validator** (:8776) — MX records, disposable check
+- **URL Shortener** (:8777) — Custom slugs, analytics
+- **JSON→TypeScript** (:8781) — JSON to TS interfaces
+- **Timestamp Converter** (:8786) — Unix ↔ human-readable
+- **UUID Generator** (:8787) — v1/v3/v4/v7
+- **Webhook Tester** (:8778) — Inspect webhooks
+
+### Data APIs
+- **GitHub Stats** (:8788) — Stars, forks, contributors
+- **GitHub Trending** (:8788) — Trending repos tracker
+
+### GitHub Bots
+- **Poke Hub** (:8775) — All-in-one: reply + stale + labeler
+- **Poke Bot** (:8770) — Auto-triage: P0-P3, S/XL
+- **Auto-Merge** (Action) — Dependabot PR auto-merge
+- **Changelog Gen** (:8783) — Conventional commits → CHANGELOG
+
+### Operations
+- **Deploy Manager** (:8784) — Start/stop/rollback
+- **Watchdog** (:8799) — Auto-restart crashed services
+- **Status Page** (:8792) — Public health dashboard
+- **Test Suite** — Syntax checks for all services
 
 ### 🌐 Gateway & Identity
 
