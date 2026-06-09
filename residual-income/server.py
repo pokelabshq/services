@@ -97,7 +97,6 @@ class RevenueHandler(http.server.BaseHTTPRequestHandler):
                 svc_status[name] = {"port": port, "healthy": h is not None, "details": h, "usage": u}
             self.send_json(svc_status)
         elif self.path == '/api/record' or self.path.startswith('/api/record?'):
-            # GET /api/record?service=billing&amount=0.001
             params = {}
             if '?' in self.path:
                 for kv in self.path.split('?')[1].split('&'):
@@ -144,7 +143,7 @@ class RevenueHandler(http.server.BaseHTTPRequestHandler):
         svc_rows = ""
         for name, port in SERVICES.items():
             h = check_service(port)
-            status = "🟢" if h else "🔟"
+            status = "🟢" if h else "🔴"
             svc_rows += f'<tr><td>{name}</td><td>{port}</td><td>{status}</td></tr>'
         return f'''<!DOCTYPE html>
 <html><head><title>🐾 Revenue Dashboard</title>
