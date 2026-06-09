@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-\"\"\"Poke Labs Combined Server v1.0 — Serves landing page + Link Preview API.\"\"\"
+"""Poke Labs Combined Server v1.0 — Serves landing page + Link Preview API."""
 import http.server, json, re, urllib.request, urllib.parse, html, os, time, socket
 
 PORT = int(os.environ.get("PORT", 8766))

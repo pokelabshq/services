@@ -193,7 +193,7 @@ def matrix_to_svg(matrix, module_size=6, border=4):
     """Convert QR matrix to SVG string"""
     size = len(matrix)
     total = (size + border*2) * module_size
-    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total {total}" shape-rendering="crispEdges">\n'
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total} {total}" shape-rendering="crispEdges">\n'
     svg += f'<rect width="{total}" height="{total}" fill="#fff"/>\n'
     for y, row in enumerate(matrix):
         for x, val in enumerate(row):

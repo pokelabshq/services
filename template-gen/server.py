@@ -267,7 +267,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 {"name": "Starter", "price": "0", "period": "forever", "features": ["3 projects", "1GB storage", "Community support"]},
                 {"name": "Pro", "price": "19", "period": "/mo", "features": ["Unlimited projects", "100GB storage", "Priority support", "Custom domain"], "featured": True},
                 {"name": "Enterprise", "price": "99", "period": "/mo", "features": ["Everything in Pro", "SSO", "SLA", "Dedicated support"]},
-            ] = ""
+             = []
                 featured_class = ' featured' if plan.get('featured') else ''
                 features_list = ''.join(f'<li style="padding:8px 0;opacity:0.8;border-bottom:1px solid {border}">{f}</li>' for f in plan['features'])
                 pricing_cards += f'''<div class="price-card{featured_class}" style="background:{card_bg};border-radius:16px;padding:32px;border:2px solid {border}{';border-color:'+accent if plan.get('featured') else ''}">

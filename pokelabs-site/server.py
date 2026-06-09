@@ -242,7 +242,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 
-    elif self.path.startswith("/api/og-generate"):
+    if self.path.startswith("/api/og-generate"):
         from urllib.parse import parse_qs, urlparse
         parsed = urlparse(self.path)
         q = parse_qs(parsed.query)

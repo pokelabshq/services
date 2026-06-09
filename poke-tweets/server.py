@@ -65,7 +65,7 @@ h1{{color:#ff6b35}} .stat{{background:#1a1a2e;padding:15px;border-radius:8px;mar
 table{{width:100%;border-collapse:collapse;margin-top:20px}}
 th,td{{padding:10px;text-align:left;border-bottom:1px solid #333}}
 th{{color:#ff6b35}} tr:hover{{background:#1a1a2e}}
-a{color:#4ecdc4;text-decoration:none}} a:hover{{text-decoration:underline}}
+a{color:#4ecdc4;text-decoration:none} a:hover{text-decoration:underline}
 </style></head><body>
 <h1>🐦 Poke Tweets Monitor</h1>
 <div class="stat">
