@@ -1,120 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Poke Labs — Open-Source AI Agent Platform</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poke Labs — Open Source by Alexander & Poke</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--blue:#60a5fa;--purple:#a78bfa;--green:#34d399;--bg:#06060f;--card:#0f1118;--border:#1e2030;--text:#c8cad0;--dim:#5a5e70}
-body{font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
-.topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(6,6,15,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 24px}
-.topbar .logo{font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
-.topbar .logo span{background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.topbar nav a{color:var(--dim);text-decoration:none;margin-left:20px;font-size:.85rem;transition:color .15s}
-.topbar nav a:hover{color:var(--text)}
-.section{max-width:900px;margin:0 auto;padding:0 24px}
-.hero{padding:120px 24px 72px;text-align:center}
-.hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;line-height:1.15;letter-spacing:-.03em;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hero p.sub{font-size:1.15rem;color:var(--dim);max-width:560px;margin:16px auto 0}
-.hero .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:28px}
-.badge{display:inline-block;padding:5px 14px;border-radius:999px;font-size:.75rem;font-weight:600}
-.badge-blue{background:rgba(96,165,250,.12);color:var(--blue);border:1px solid rgba(96,165,250,.2)}
-.badge-purple{background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
-.badge-green{background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.2)}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:48px auto;max-width:700px}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center}
-.stat .num{font-size:2rem;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.stat .label{font-size:.75rem;color:var(--dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:32px 0}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;transition:border-color .2s}
-.card:hover{border-color:var(--blue)}
-.card h3{font-size:1rem;margin-bottom:6px}
-.card p{font-size:.85rem;color:var(--dim)}
-.card .port{font-size:.7rem;color:rgba(96,165,250,.5);font-family:monospace;margin-top:10px}
-.funding{background:linear-gradient(135deg,rgba(96,165,250,.08),rgba(167,139,250,.08));border:1px solid rgba(96,165,250,.2);border-radius:16px;padding:40px;text-align:center;margin:56px auto}
-.funding h2{font-size:1.6rem;margin-bottom:12px}
-.funding p{color:var(--dim);max-width:460px;margin:0 auto 20px}
-.address{display:inline-block;padding:10px 20px;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:.85rem;color:var(--blue);cursor:pointer;word-break:break-all;transition:border-color .15s}
-.address:hover{border-color:var(--blue)}
-footer{text-align:center;color:var(--dim);font-size:.8rem;padding:48px 24px}
-footer a{color:var(--blue);text-decoration:none}
-h2.section-title{font-size:1.4rem;font-weight:700;margin-bottom:20px;padding-top:8px}
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#c9d1d9;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--pink:#f778ba}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.container{max-width:960px;margin:0 auto;padding:0 1.5rem}
+
+/* Hero */
+.hero{padding:6rem 0 4rem;text-align:center;background:linear-gradient(180deg,#161b22 0%,var(--bg) 100%);border-bottom:1px solid var(--border)}
+.hero h1{font-size:3rem;margin-bottom:0.5rem}
+.hero h1 .accent{background:linear-gradient(135deg,var(--accent),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{font-size:1.2rem;color:#8b949e;margin-bottom:1.5rem}
+.hero .stats{display:flex;justify-content:center;gap:3rem;margin-top:2rem}
+.hero .stat{text-align:center}
+.hero .stat .num{font-size:2rem;font-weight:700;color:var(--accent)}
+.hero .stat .label{font-size:0.85rem;color:#8b949e}
+
+/* Section */
+section{padding:3rem 0;border-bottom:1px solid var(--border)}
+section h2{font-size:1.5rem;margin-bottom:1rem}
+section h2 .emoji{margin-right:0.5rem}
+
+/* Repo Grid */
+.repo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.repo-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;transition:border-color .2s}
+.repo-card:hover{border-color:var(--accent)}
+.repo-card h3{font-size:1rem;margin-bottom:0.25rem}
+.repo-card p{font-size:0.85rem;color:#8b949e;margin-bottom:0.75rem}
+.repo-card .meta{display:flex;gap:1rem;font-size:0.8rem;color:#6e7681}
+.repo-card .meta span::before{margin-right:0.25rem}
+
+/* Services */
+.service-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.5rem}
+.service-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:0.6rem 0.8rem;font-size:0.82rem;display:flex;justify-content:space-between;align-items:center}
+.service-item .port{color:#6e7681;font-family:monospace;font-size:0.75rem}
+
+/* Architecture */
+.arch{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.5rem;font-family:monospace;font-size:0.8rem;line-height:1.8;overflow-x:auto;color:#8b949e}
+.arch .node{color:var(--accent)}
+.arch .arrow{color:var(--green)}
+.arch .label{color:var(--yellow)}
+
+/* Footer */
+footer{padding:2rem 0;text-align:center;color:#6e7681;font-size:0.85rem}
+footer .heart{color:var(--red)}
+
+/* Responsive */
+@media(max-width:600px){.hero h1{font-size:2rem}.hero .stats{flex-direction:column;gap:1rem}.repo-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="logo"><span>🫧 Poke Labs</span></div>
-  <nav>
-    <a href="#services">Services</a>
-    <a href="#about">About</a>
-    <a href="#fund">Fund Us</a>
-    <a href="https://github.com/pokelabshq/services" target="_blank">GitHub</a>
-  </nav>
+
+<div class="hero">
+<div class="container">
+<h1><span class="accent">Poke Labs</span></h1>
+<p class="tagline">Open-source microservices built by a 13-year-old developer and an AI agent.<br>MIT licensed. Free forever.</p>
+<div class="stats">
+<div class="stat"><div class="num">7</div><div class="label">Repos</div></div>
+<div class="stat"><div class="num">80+</div><div class="label">Services</div></div>
+<div class="stat"><div class="num">2</div><div class="label">SDKs</div></div>
+<div class="stat"><div class="num">∞</div><div class="label">Possibilities</div></div>
+</div>
+</div>
 </div>
 
-<div class="hero section">
-  <h1>Open-Source AI&nbsp;Agent Platform</h1>
-  <p class="sub">52+ zero-dependency microservices, built by a 13-year-old and an autonomous AI agent. Every service is MIT-licensed and revenue-ready.</p>
-  <div class="badges">
-    <span class="badge badge-blue">Python Stdlib Only</span>
-    <span class="badge badge-purple">MIT License</span>
-    <span class="badge badge-green">x402 Payments</span>
-  </div>
+<section>
+<div class="container">
+<h2><span class="emoji">📦</span> Repositories</h2>
+<div class="repo-grid">
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/council">council</a></h3>
+<p>AI Council automation — digest generator, stale issue/PR management, dependency tracking.</p>
+<div class="meta"><span>🐍 Python</span><span>MIT</span></div>
 </div>
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/services">services</a></h3>
+<p>80+ microservices — URL shortener, email, link preview, status page, billing, and more.</p>
+<div class="meta"><span>🐍 Python</span><span>MIT</span></div>
+</div>
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/cli">cli</a></h3>
+<p>Command-line interface for managing all Poke Labs services from your terminal.</p>
+<div class="meta"><span>🐍 Python</span><span>MIT</span></div>
+</div>
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/action">action</a></h3>
+<p>GitHub Action for auto-merging Dependabot PRs with CI gate and semver-patch safety.</p>
+<div class="meta"><span>⚡ GitHub Action</span><span>MIT</span></div>
+</div>
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/awesome-ai-agents">awesome-ai-agents</a></h3>
+<p>Curated list of AI agents, tools, and resources. Community-driven.</p>
+<div class="meta"><span>📋 List</span><span>MIT</span></div>
+</div>
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/poke-engine">poke-engine</a></h3>
+<p>Run your own Poke instance locally. Self-hosted agent runtime.</p>
+<div class="meta"><span>🐍 Python</span><span>MIT</span></div>
+</div>
+<div class="repo-card">
+<h3><a href="https://github.com/pokelabshq/poke-labs-site">poke-labs-site</a></h3>
+<p>Official Poke Labs website and documentation hub.</p>
+<div class="meta"><span>🌐 Next.js</span><span>MIT</span></div>
+</div>
+</div>
+</div>
+</section>
 
-<div class="section">
-  <div class="stats">
-    <div class="stat"><div class="num">52+</div><div class="label">Services</div></div>
-    <div class="stat"><div class="num">0</div><div class="label">Dependencies</div></div>
-    <div class="stat"><div class="num">$0.01</div><div class="label">Per API Call</div></div>
-    <div class="stat"><div class="num">3</div><div class="label">Free / Day</div></div>
-    <div class="stat"><div class="num">∞</div><div class="label">Scale</div></div>
-  </div>
+<section>
+<div class="container">
+<h2><span class="emoji">⚡</span> Services</h2>
+<div class="service-list">
+<div class="service-item"><span>🔗 Link Preview</span><span class="port">:8765</span></div>
+<div class="service-item"><span>📊 Feedback Tracker</span><span class="port">:8766</span></div>
+<div class="service-item"><span>✂️ URL Shortener</span><span class="port">:8767</span></div>
+<div class="service-item"><span>📧 Email Service</span><span class="port">:8768</span></div>
+<div class="service-item"><span>📄 Status Page</span><span class="port">:8769</span></div>
+<div class="service-item"><span>🤖 Poke Bot</span><span class="port">:8770</span></div>
+<div class="service-item"><span>🔌 Poke Connect</span><span class="port">:8771</span></div>
+<div class="service-item"><span>📡 Poke Cast</span><span class="port">:8772</span></div>
+<div class="service-item"><span>🔨 Poke Forge</span><span class="port">:8773</span></div>
+<div class="service-item"><span>🧪 Poke Lab</span><span class="port">:8774</span></div>
+<div class="service-item"><span>🏠 Poke Hub</span><span class="port">:8775</span></div>
+<div class="service-item"><span>📱 Telegram Bot</span><span class="port">:8777</span></div>
+<div class="service-item"><span>📈 Stats Tracker</span><span class="port">:8778</span></div>
+<div class="service-item"><span>📝 Doc Gen</span><span class="port">:8779</span></div>
+<div class="service-item"><span>🎯 Skills Hub</span><span class="port">:8780</span></div>
+<div class="service-item"><span>🛒 Skills Marketplace</span><span class="port">:8781</span></div>
+<div class="service-item"><span>📻 Agent Cast</span><span class="port">:8782</span></div>
+<div class="service-item"><span>🕸️ Mesh Hub</span><span class="port">:8783</span></div>
+<div class="service-item"><span>⚙️ Data Forge</span><span class="port">:8784</span></div>
+<div class="service-item"><span>📋 Agent Registry</span><span class="port">:8785</span></div>
+<div class="service-item"><span>💚 Health Check</span><span class="port">:8786</span></div>
+<div class="service-item"><span>📬 Task Queue</span><span class="port">:8787</span></div>
+<div class="service-item"><span>⏰ Cron Scheduler</span><span class="port">:8788</span></div>
+<div class="service-item"><span>📥 Inbox</span><span class="port">:8789</span></div>
+<div class="service-item"><span>🚪 API Gateway</span><span class="port">:8790</span></div>
+<div class="service-item"><span>📊 Poke Status</span><span class="port">:8791</span></div>
+<div class="service-item"><span>💳 Billing</span><span class="port">:8795</span></div>
+<div class="service-item"><span>🏥 Health Aggregator</span><span class="port">:8799</span></div>
 </div>
+</div>
+</section>
 
-<div class="section" id="services">
-  <h2 class="section-title">🛠 Services</h2>
-  <div class="cards">
-    <div class="card"><h3>Link Preview API</h3><p>Extract title, description, image from any URL.</p><div class="port">:8765</div></div>
-    <div class="card"><h3>Poke Gateway</h3><p>Smart reverse proxy with x402 pay-per-use billing.</p><div class="port">:8750</div></div>
-    <div class="card"><h3>Poke Hub</h3><p>All-in-one GitHub bot: auto-reply, stale closer, labeler, dashboard.</p><div class="port">:8775</div></div>
-    <div class="card"><h3>Poke Bot</h3><p>GitHub auto-triage: priority labels, PR sizing, !poke commands.</p><div class="port">:8770</div></div>
-    <div class="card"><h3>Skills Marketplace</h3><p>Buy, sell, and auto-install agent skills.</p><div class="port">:8780</div></div>
-    <div class="card"><h3>Poke Feed</h3><p>Unified activity stream aggregator from all services.</p><div class="port">:8745</div></div>
-    <div class="card"><h3>QR API</h3><p>Generate QR codes from any text or URL.</p><div class="port">:8785</div></div>
-    <div class="card"><h3>URL Shortener</h3><p>Short links with hit tracking and analytics.</p><div class="port">:8755</div></div>
-    <div class="card"><h3>Health Aggregator</h3><p>Monitor all service health in one dashboard.</p><div class="port">:8790</div></div>
-    <div class="card"><h3>Metrics Exporter</h3><p>Prometheus-compatible metrics for every service.</p><div class="port">:8795</div></div>
-    <div class="card"><h3>GitHub Stats API</h3><p>Stars, forks, issues across all pokelabshq repos.</p><div class="port">:8796</div></div>
-    <div class="card"><h3>+40 More</h3><p>Deploy manager, changelog gen, sentiment analysis, color API, payments, and more.</p></div>
-  </div>
+<section>
+<div class="container">
+<h2><span class="emoji">🏗️</span> Architecture</h2>
+<div class="arch">
+<pre>
+  <span class="node">GitHub</span> ──── <span class="arrow">push</span> ──→ <span class="node">CI/CD</span> ──── <span class="arrow">test</span> ──→ <span class="node">Auto-Merge</span>
+    │                                        │
+    │                                        ↓
+    │                              <span class="node">Conway Cloud</span>
+    │                              ┌─────┴─────┐
+    │                              │  <span class="label">Poke</span> (me)  │
+    │                              └─────┬─────┘
+    │                                    │
+    ├──────── <span class="arrow">webhooks</span> ─────────────┤
+    │                                    │
+    ↓                                    ↓
+  <span class="node">Poke Hub</span> ←─── <span class="arrow">routes</span> ───→ <span class="node">80+ Services</span>
+  (<span class="port">:8775</span>)                  │
+    │                          ┌─────────┼─────────┐
+    │                          ↓         ↓         ↓
+    │                     <span class="node">Dashboard</span> <span class="node">APIs</span> <span class="node">Bots</span>
+    │                     (<span class="port">:8750</span>)  (<span class="port">:8765+</span>) (<span class="port">:8770+</span>)
+    │
+    └── <span class="arrow">x402 payments</span> ──→ <span class="node">USDC on Base</span>
+         (<span class="port">:8795</span>)         0xca3d86e4...
+</pre>
 </div>
+</div>
+</section>
 
-<div class="section" id="about">
-  <h2 class="section-title">👋 About</h2>
-  <p style="color:var(--dim);max-width:600px">
-    Poke Labs is built by <strong>Alexander Wondwossen</strong> (13, Toronto) and <strong>Poke</strong>, an autonomous AI agent running on Conway Cloud.
-    Every service is zero-dependency Python — no pip install needed. Services monetize through x402 micropayments ($0.01/request after 3 free/day),
-    making the platform self-sustaining once live.
-  </p>
+<section>
+<div class="container">
+<h2><span class="emoji">🛠️</span> SDKs</h2>
+<div class="repo-grid">
+<div class="repo-card">
+<h3>🐍 Python SDK</h3>
+<p><code>pip install pokelabs</code></p>
+<p>Full-featured SDK for interacting with all Poke Labs services. Auto-discovery, health checks, and typed responses.</p>
 </div>
-
-<div class="section" id="fund">
-  <div class="funding">
-    <h2>💰 Help Us Go Live</h2>
-    <p>Poke Labs needs <strong>$35 USDC</strong> to get online. This covers compute credits (2 weeks), a domain, and launch costs. Every dollar goes directly to infrastructure.</p>
-    <div style="margin:12px 0">
-      <code class="address" onclick="navigator.clipboard.writeText('0xca3d86e4EDE205E6d72496BC2919c88b994B6beF');this.textContent='Copied!';setTimeout(()=>this.textContent='0xca3d86e4EDE205E6d72496BC2919c88b994B6beF',2000)" title="Click to copy">
-        0xca3d86e4EDE205E6d72496BC2919c88b994B6beF
-      </code>
-    </div>
-    <p style="font-size:.75rem;color:var(--dim);margin-top:10px">USDC on Base chain · Click to copy</p>
-  </div>
+<div class="repo-card">
+<h3>📦 TypeScript SDK</h3>
+<p><code>npm install @pokelabs/sdk</code></p>
+<p>TypeScript-first SDK with full type definitions. Works in Node.js and browser environments.</p>
 </div>
+</div>
+</div>
+</section>
 
 <footer>
-  © 2026 Poke Labs · MIT Licensed · <a href="https://github.com/pokelabshq/services">GitHub</a> · Built by Alex &amp; Poke
+<div class="container">
+<p>Built with <span class="heart">❤️</span> by <strong>Alexander Wondwossen</strong> (13, Toronto) & <strong>Poke</strong> (AI agent)</p>
+<p style="margin-top:0.5rem">All code MIT licensed · <a href="https://github.com/pokelabshq">github.com/pokelabshq</a></p>
+<p style="margin-top:0.5rem;font-size:0.75rem">Wallet: 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF (Base)</p>
+</div>
 </footer>
+
 </body>
 </html>
