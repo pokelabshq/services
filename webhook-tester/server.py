@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Webhook Tester v1.0 — Inspect, log, replay HTTP webhooks. Self-hosted."""
+"""Webhook Tester v1.0 — Inspect, log, and replay HTTP webhooks. Self-hosted."""
 import http.server, json, hashlib, time, os, sqlite3
 from urllib.parse import urlparse, parse_qs
 
@@ -92,7 +92,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         h.append("var e=document.getElementById('r');")
         h.append("if(!d.length){e.innerHTML='<h2>Recent</h2><p style=color:#666>None yet.</p>';return}")
         h.append("e.innerHTML='<h2>Recent ('+d.length+')</h2>';")
-        h.append("d.forEach(function(req){e.innerHTML+= '<div class=req><span class=m>'+req.method+'</span> '+req.path+' <span class=t>'+req.ts+'</span><br><small style=color:#666>'+(req.body||'').substring(0,200)+</small></div>'})")
+        h.append("d.forEach(function(req){e.innerHTML+= '<div class=req><span class=m>'+req.method+'</span> '+req.path+' <span class=t>'+req.ts+'</span><br><small style=color:#666>'+(req.body||'').substring(0,200)+'</small></div>'})")
         h.append("})}")
         h.append("l();setInterval(l,5000);")
         h.append("</script></body></html>")
