@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Labs — Open Source Microservices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08080a;--card:#12121a;--border:#1e1e2e;--text:#e4e4e7;--muted:#71717a;--accent:#a78bfa;--accent2:#22d3ee;--green:#22c55e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.nav{padding:20px 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.nav .logo{font-size:1.4em;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px}
+.nav .logo span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links a{margin-left:24px;color:var(--muted);font-size:0.9em;font-weight:500}
+.nav-links a:hover{color:var(--text)}
+.hero{padding:80px 0;text-align:center;position:relative}
+.hero::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 70%);pointer-events:none;z-index:0}
+.hero *{position:relative;z-index:1}
+.hero h1{font-size:3.5em;font-weight:800;letter-spacing:-0.03em;margin-bottom:16px;line-height:1.1}
+.hero h1 .grad{background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,var(--green) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .sub{font-size:1.25em;color:var(--muted);max-width:600px;margin:0 auto 32px;line-height:1.6}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:24px 0}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:0.8em;font-weight:600;border:1px solid var(--border);background:var(--card)}
+.badge svg{width:14px;height:14px}
+.badge.green{color:var(--green);border-color:rgba(34,197,94,0.2)}
+.badge.purple{color:var(--accent);border-color:rgba(167,139,250,0.2)}
+.badge.cyan{color:var(--accent2);border-color:rgba(34,211,238,0.2)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:40px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:40px 0}
+.stat{text-align:center}
+.stat .num{font-size:2.5em;font-weight:800;color:var(--accent);letter-spacing:-0.02em}
+.stat .label{color:var(--muted);font-size:0.85em;margin-top:4px}
+.section{padding:60px 0}
+.section h2{font-size:2em;font-weight:700;margin-bottom:8px;text-align:center}
+.section .sub{text-align:center;color:var(--muted);margin-bottom:40px;font-size:1.05em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;transition:all 0.2s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card h3{font-size:1.1em;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.card .desc{color:var(--muted);font-size:0.9em;margin-bottom:12px}
+.card .port{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:0.75em;color:var(--accent);background:rgba(167,139,250,0.1);padding:2px 8px;border-radius:4px;margin-bottom:8px}
+.card .cmd{font-family:'JetBrains Mono',monospace;font-size:0.78em;background:#0a0a0a;border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--green);overflow-x:auto;white-space:pre}
+.cat-header{font-size:0.75em;font-weight:700;text-transform:letter-spacing:0.1em;color:var(--muted);margin:32px 0 12px;display:flex;align-items:center;gap:8px}
+.cat-header::after{content:'';flex:1;height:1px;background:var(--border)}
+pre.code-block{background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:24px;overflow-x:auto;font-size:0.85em;margin:16px 0}
+pre code{color:var(--text);font-family:'JetBrains Mono',monospace}
+.ft{padding:60px 0;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:0.9em}
+.ft a{color:var(--accent)}
+@media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:2.2em}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav">
+<div class="logo">🐾 <span>Poke Labs</span></div>
+<div class="nav-links">
+<a href="#services">Services</a>
+<a href="#quickstart">Quick Start</a>
+<a href="https://github.com/pokelabshq">GitHub</a>
+</div>
+</nav>
+
+<section class="hero">
+<h1><span class="grad">87 zero-dependency</span><br>Python microservices</h1>
+<p class="sub">Built by an autonomous AI agent &amp; a 13-year-old developer in Toronto. All MIT licensed. All free.</p>
+<div class="badges">
+<span class="badge green">● No pip install needed</span>
+<span class="badge purple">MIT License</span>
+<span class="badge cyan">Python stdlib only</span>
+</div>
+</section>
+
+<div class="stats">
+<div class="stat"><div class="num">87</div><div class="label">Microservices</div></div>
+<div class="stat"><div class="num">0</div><div class="label">Dependencies</div></div>
+<div class="stat"><div class="num">15</div><div class="label">Categories</div></div>
+<div class="stat"><div class="num">100%</div><div class="label">Open Source</div></div>
+</div>
+
+<section class="section" id="services">
+<h2>Featured Services</h2>
+<p class="sub">Self-hosted tools you can run in one command</p>
+<div class="grid" id="card-grid"></div>
+</section>
+
+<section class="section" id="quickstart">
+<h2>Quick Start</h2>
+<p class="sub">Clone, run, done</p>
+<pre class="code-block"><code>git clone https://github.com/pokelabshq/services.git
+cd services
+
+# Start all services at once
+for d in */server.py; do nohup python3 "$d" > "/tmp/$(dirname $d).log" 2>&1 & done
+
+# Or start individual ones
+nohup python3 color-api/server.py &amp;    # Port 8767
+nohup python3 link-preview/server.py &amp;  # Port 8765
+nohup python3 dashboard/server.py &amp;     # Port 8780
+
+# Test
+curl http://localhost:8767/api/random</code></pre>
+</section>
+
+<footer class="ft">
+<p>🐾 <strong>Poke Labs</strong> — Built by Poke (AI) &amp; Alexander Wondwossen (13, Toronto)</p>
+<p style="margin-top:8px">
+<a href="https://github.com/pokelabshq">GitHub</a> ·
+<a href="https://github.com/pokelabshq/services">Services</a> ·
+<a href="https://github.com/pokelabshq/council">Council</a> ·
+<a href="https://github.com/pokelabshq/sdk-python">Python SDK</a> ·
+<a href="https://github.com/pokelabshq/sdk-typescript">TypeScript SDK</a>
+</p>
+<p style="margin-top:12px;font-size:0.85em">MIT License · 2026 · Wallet: 0xca...6beF on Base</p>
+</footer>
+</div>
+</body>
+</html>
