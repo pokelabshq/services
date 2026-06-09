@@ -1,114 +1,195 @@
 #!/usr/bin/env python3
-"""Poke Labs Status Page — Public service status dashboard. Port 8740."""
-import http.server, json, subprocess, os, socketserver, urllib.parse, datetime, re
+"""
+Poke Labs Status Page v1.0
+Public-facing status dashboard showing health and uptime of all services.
+Pure Python stdlib. Zero deps.
 
-PORT = 8740
-SERVICES_DIR = "/home/alx/services"
-ENTRY_FILES = ["server.py", "bot.py", "app.py", "main.py", "index.js"]
+Usage: python3 status-page/server.py &
+Dashboard: http://localhost:8792/
+API: http://localhost:8792/api/status
+"""
+import http.server, json, os, time, threading
+from datetime import datetime
+from urllib.request import urlopen
+from urllib.error import URLError
 
-def discover():
-    svcs = []
-    if not os.path.isdir(SERVICES_DIR): return svcs
-    for name in sorted(os.listdir(SERVICES_DIR)):
-        sdir = os.path.join(SERVICES_DIR, name)
-        if not os.path.isdir(sdir): continue
-        for entry in ENTRY_FILES:
-            if os.path.isfile(os.path.join(sdir, entry)):
-                port = None
-                try:
-                    with open(os.path.join(sdir, entry)) as f:
-                        for line in f:
-                            m = re.search(r'PORT\s*=\s*(\d{4,5})', line)
-                            if m: port = int(m.group(1)); break
-                except: pass
-                running = False
-                if port:
-                    try:
-                        r = subprocess.run(["fuser", f"{port}/tcp"], capture_output=True, timeout=2)
-                        if r.returncode == 0 and r.stdout.strip(): running = True
-                    except: pass
-                svcs.append({"name": name, "port": port, "running": running})
-                break
-    return svcs
+PORT = 8792
+CHECK_INTERVAL = 30  # seconds
 
-class H(http.server.BaseHTTPRequestHandler):
+SERVICES = [
+    {"name": "Link Preview", "port": 8765, "url": "/api/health", "category": "api"},
+    {"name": "Billing", "port": 8766, "url": "/api/health", "category": "core"},
+    {"name": "Dashboard", "port": 8780, "url": "/api/health", "category": "core"},
+    {"name": "Poke Hub", "port": 8775, "url": "/api/health", "category": "github"},
+    {"name": "GitHub Trending", "port": 8788, "url": "/api/health", "category": "data"},
+    {"name": "Skill Marketplace", "port": 8790, "url": "/api/health", "category": "marketplace"},
+    {"name": "Service Watchdog", "port": 8799, "url": "/api/health", "category": "ops"},
+    {"name": "Revenue Dashboard", "port": 8785, "url": "/api/health", "category": "core"},
+]
+
+status_cache = {}
+cache_lock = threading.Lock()
+start_time = time.time()
+
+def check_service(svc):
+    try:
+        r = urlopen(f"http://127.0.0.1:{svc['port']}{svc['url']}", timeout=5)
+        data = json.loads(r.read())
+        return {"status": "up", "latency_ms": 0, "details": data}
+    except URLError as e:
+        return {"status": "down", "error": str(e.reason) if hasattr(e, 'reason') else str(e)}
+    except Exception as e:
+        return {"status": "down", "error": str(e)}
+
+def check_all():
+    global status_cache
+    results = {}
+    for svc in SERVICES:
+        results[svc["name"]] = check_service(svc)
+        results[svc["name"]]["port"] = svc["port"]
+        results[svc["name"]]["category"] = svc["category"]
+    with cache_lock:
+        status_cache = results
+
+def monitor_loop():
+    while True:
+        check_all()
+        time.sleep(CHECK_INTERVAL)
+
+class StatusHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        p = urllib.parse.urlparse(self.path).path
-        if p == "/api/status": self.send_json({"ts": datetime.datetime.utcnow().isoformat(), "services": self.check_all()})
-        elif p == "/": self.send_html(PAGE)
-        else: self.send_json({"error": "not found"}, 404)
-
-    def check_all(self):
-        svcs = discover()
-        total = len(svcs)
-        up = sum(1 for s in svcs if s["running"])
-        return {"total": total, "up": up, "down": total - up, "uptime_pct": round(100*up/total) if total else 0, "services": svcs}
-
-    def send_json(self, d, c=200):
-        b = json.dumps(d, default=str).encode()
-        self.send_response(c); self.send_header("Content-Type","application/json")
-        self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
-
-    def send_html(self, h):
-        b = h.encode()
-        self.send_response(200); self.send_header("Content-Type","text/html; charset=utf-8")
-        self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
-    def log_message(self,*a): pass
-
-PAGE = """<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Poke Labs Status</title>
+        path = self.path.split("?")[0]
+        
+        if path == "/":
+            self.send_html(self.render_dashboard())
+        elif path == "/api/status":
+            with cache_lock:
+                self.send_json(status_cache)
+        elif path == "/api/health":
+            with cache_lock:
+                total = len(status_cache)
+                up = sum(1 for s in status_cache.values() if s.get("status") == "up")
+            self.send_json({"ok": True, "up": up, "total": total, "uptime_pct": round(up/max(total,1)*100, 1)})
+        elif path == "/badge.svg":
+            self.send_svg()
+        else:
+            self.send_response(404); self.end_headers()
+    
+    def send_html(self, html):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(html.encode())
+    
+    def send_json(self, data):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps(data, indent=2).encode())
+    
+    def send_svg(self):
+        with cache_lock:
+            total = len(status_cache) or len(SERVICES)
+            up = sum(1 for s in status_cache.values() if s.get("status") == "up") if status_cache else 0
+        pct = round(up / total * 100) if total else 0
+        if pct >= 99:
+            color = "#22c55e"
+            text = "all systems operational"
+        elif pct >= 80:
+            color = "#f59e0b"
+            text = "partial outage"
+        else:
+            color = "#ef4444"
+            text = "major outage"
+        
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20">
+<rect x="0" y="0" width="80" height="20" fill="#555"/>
+<rect x="79" y="0" width="121" height="20" fill="{color}"/>
+<text x="40" y="14" text-anchor="middle" fill="white" font-size="11" font-family="monospace">status</text>
+<text x="140" y="14" text-anchor="middle" fill="white" font-size="11" font-family="monospace">{text}</text>
+</svg>'''
+        self.send_response(200)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(svg.encode())
+    
+    def render_dashboard(self):
+        with cache_lock:
+            data = dict(status_cache)
+        uptime = time.time() - start_time
+        uptime_str = f"{int(uptime//3600)}h {int((uptime%3600)//60)}m"
+        
+        categories = {}
+        for svc in SERVICES:
+            cat = svc["category"]
+            if cat not in categories:
+                categories[cat] = []
+            sv = data.get(svc["name"], {"status": "unknown"})
+            sv["name"] = svc["name"]
+            sv["port"] = svc["port"]
+            categories[cat].append(sv)
+        
+        cats_html = ""
+        for cat, svcs in categories.items():
+            items = ""
+            for s in svcs:
+                st = s.get("status", "unknown")
+                icon = "🟢" if st == "up" else "🔴" if st == "down" else "⚪"
+                err = s.get("error", "")
+                err_html = f' <span style="color:#ef4444;font-size:0.8em">({err})</span>' if err else ""
+                items += f'<div style="padding:4px 0">{icon} <b>{s["name"]}</b> <span style="color:#666">:{s["port"]}</span>{err_html}</div>\n'
+            cats_html += f'<div style="margin:12px 0"><h3 style="color:#a78bfa;margin:4px 0">{cat.upper()}</h3>{items}</div>\n'
+        
+        total = len(data) or len(SERVICES)
+        up_count = sum(1 for s in data.values() if s.get("status") == "up") if data else 0
+        
+        return f'''<!DOCTYPE html>
+<html>
+<head>
+<title>🐾 Poke Labs Status</title>
+<meta http-equiv="refresh" content="30">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a1a;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
-.header{text-align:center;margin-bottom:32px}
-h1{font-size:2.2em;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sub{color:#666;margin-top:8px}
-.stats{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;justify-content:center}
-.stat{background:#16162a;border:1px solid #2a2a4a;border-radius:12px;padding:20px 28px;text-align:center;min-width:120px}
-.stat .v{font-size:2em;font-weight:700}
-.stat .l{font-size:.75em;color:#666;text-transform:uppercase;margin-top:4px}
-.ok{color:#34d399}.warn{color:#fbbf24}.err{color:#f87171}
-.bar{height:8px;background:#1a1a3a;border-radius:4px;overflow:hidden;margin-bottom:32px;width:100%;max-width:600px}
-.bar-fill{height:100%;background:linear-gradient(90deg,#34d399,#60a5fa);border-radius:4px;transition:width 1s}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;width:100%;max-width:800px}
-.s{background:#12122a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:.9em}
-.d{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.d.up{background:#34d399;box-shadow:0 0 6px #34d399}.d.down{background:#f87171;box-shadow:0 0 6px #f87171}
-.sn{flex:1}.pt{color:#555;font-size:.8em;font-family:mono}
-footer{margin-top:40px;color:#444;font-size:.8em}
-</style></head><body>
-<div class="header"><h1>🫧 Poke Labs</h1><p class="sub">Service Status Dashboard</p></div>
-<div class="stats" id="stats"></div>
-<div class="bar"><div class="bar-fill" id="bar" style="width:0%"></div></div>
-<div class="grid" id="grid"></div>
-<footer>Powered by Poke Labs · Open Source · <a href="https://github.com/pokelabshq/services" style="color:#60a5fa">GitHub</a></footer>
-<script>
-(async function(){
-  try{
-    const d=await(await fetch('/api/status')).json();
-    const s=d.services;
-    const up=s.filter(x=>x.running).length;
-    const down=s.length-up;
-    const pct=d.uptime_pct;
-    document.getElementById('stats').innerHTML=`
-      <div class="stat"><div class="v">${s.length}</div><div class="l">Total</div></div>
-      <div class="stat"><div class="v ok">${up}</div><div class="l">Operational</div></div>
-      <div class="stat"><div class="v ${down?'err':'ok'}">${down}</div><div class="l">Down</div></div>
-      <div class="stat"><div class="v ${pct>90?'ok':pct>50?'warn':'err'}">${pct}%</div><div class="l">Uptime</div></div>
-    `;
-    document.getElementById('bar').style.width=pct+'%';
-    document.getElementById('grid').innerHTML=s.map(x=>`
-      <div class="s"><div class="d ${x.running?'up':'down'}"></div>
-      <div class="sn">${x.name}</div>
-      ${x.port?'<div class="pt">:'+x.port+'</div>':''}</div>
-    `).join('');
-  }catch(e){document.getElementById('stats').innerHTML='<p class="err">Failed to load status</p>'}
-})();
-setInterval(()=>location.reload(),30000);
-</script></body></html>"""
+body{{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;background:#0a0a0a;color:#e0e0e0}}
+h1{{color:#a78bfa;margin-bottom:4px}}
+.mono{{font-family:monospace}}
+.card{{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:16px;margin:12px 0}}
+.ok{{color:#22c55e}}.bad{{color:#ef4444}}.unk{{color:#6b7280}}
+small{{color:#666}}
+</style>
+</head>
+<body>
+<h1>🐾 Poke Labs Status</h1>
+<small>Auto-refresh every 30s · Uptime: {uptime_str}</small>
 
-class R(socketserver.TCPServer): allow_reuse_address=True
+<div class="card">
+📊 <b>{up_count}/{total}</b> services healthy
+<pre style="margin:8px 0">
+{"█" * up_count}{"░" * (total - up_count)}
+</pre>
+</div>
 
-if __name__=="__main__":
-    print(f"📊 Poke Status Page on port {PORT}")
-    R(("",PORT),H).serve_forever()
+{cats_html}
+
+<p style="margin-top:20px">
+<small>
+<a href="/api/status" style="color:#a78bfa">JSON API</a> · 
+<a href="/badge.svg" style="color:#a78bfa">Status Badge</a> ·
+All services MIT licensed · 
+<a href="https://github.com/pokelabshq/services" style="color:#a78bfa">GitHub</a>
+</small>
+</p>
+<p><small>Wallet: 0xca3d86e4EDE205E6d72496BC2919c88b994B6beF (Base chain)</small></p>
+</body></html>'''
+    
+    def log_message(self, *a): pass
+
+if __name__ == "__main__":
+    check_all()
+    t = threading.Thread(target=monitor_loop, daemon=True)
+    t.start()
+    s = http.server.HTTPServer(("0.0.0.0", PORT), StatusHandler)
+    print(f"🐾 Status Page: http://localhost:{PORT}/", flush=True)
+    print(f"   Badge: http://localhost:{PORT}/badge.svg", flush=True)
+    s.serve_forever()
