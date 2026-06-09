@@ -6,7 +6,6 @@ Each service is a single directory with a `server.py`. No `pip install` needed:
 ```bash
 cd services/<name>
 python3 server.py &
-# Service is now running on its port
 ```
 
 ## Core Services (Start These First)
@@ -69,7 +68,6 @@ python3 server.py &
 - **uptime-checker** — Uptime checking
 - **status-page** — Public status page
 - **statuspage** — StatusPage.io integration
-- **analytics** — Usage analytics
 
 ### Content & Media
 - **landing-generator** — Landing page generator
@@ -94,7 +92,6 @@ python3 server.py &
 - **watchdog** — Auto-restart crashed services
 - **service-watchdog** — Service health watchdog
 - **health-agg** — Health aggregation
-- **health-dashboard** — Health dashboard
 - **webhook-dashboard** — Webhook monitoring
 - **webhook-relay** — Webhook relay
 - **ws-events-hub** — WebSocket events
@@ -105,15 +102,12 @@ python3 server.py &
 - **shortener** — URL shortener
 - **url-shortener** — URL shortener (alt)
 - **web** — Static web server
-- **blog** — Blog platform
 
 ### Other
 - **cli** — Command line interface
 - **auto-merge** — Auto-merge GitHub Action
-- **cron-service** — Cron job runner
 - **echo** — Echo test service
 - **zero-dep-echo** — Zero-dependency echo
-- **test_all** — Test runner
 
 ## Architecture
 ```
